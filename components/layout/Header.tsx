@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { LogOut, User, Menu, Search, ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -18,12 +19,26 @@ import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { navItems } from "@/components/layout/Sidebar";
+import { CommandPalette } from "@/components/shared/CommandPalette";
 
 export function Header() {
   const { user } = useAuthStore();
   const logout = useLogout();
   const { toggleMobileDrawer, toggleSidebarCollapsed } = useUiStore();
   const pathname = usePathname();
+  const [commandOpen, setCommandOpen] = useState(false);
+
+  // ⌘K / Ctrl+K global shortcut
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Resolve current page label from navItems
   const currentNav = navItems.find(
@@ -71,7 +86,7 @@ export function Header() {
       {/* ── Right: search + bell + avatar + theme ── */}
       <div className="flex items-center gap-1.5">
         {/* Search bar */}
-        <button className="hidden md:flex items-center gap-2 h-9 rounded-lg border border-border dark:bg-muted/40 bg-background px-3 text-sm text-muted-foreground hover:dark:bg-muted/70 hover:bg-background/70 transition-colors min-w-[180px]">
+        <button onClick={() => setCommandOpen(true)} className="hidden md:flex items-center gap-2 h-9 rounded-lg border border-border dark:bg-muted/40 bg-background px-3 text-sm text-muted-foreground hover:dark:bg-muted/70 hover:bg-background/70 transition-colors min-w-[180px]">
           <Search className="h-3.5 w-3.5 shrink-0" />
           <span className="flex-1 text-left text-xs">Search...</span>
           <kbd className="inline-flex items-center rounded border border-border bg-background px-1.5 py-px text-[10px] font-medium text-muted-foreground">
@@ -117,6 +132,8 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
     </header>
   );
 }
