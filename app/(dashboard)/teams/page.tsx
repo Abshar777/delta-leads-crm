@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Loader2, Edit2, Trash2, ExternalLink,
@@ -32,11 +32,22 @@ function AdminTeamsList() {
   const canEdit   = hasPermission("teams", "edit");
   const canDelete = hasPermission("teams", "delete");
 
-  const [search, setSearch]     = useState("");
-  const [statusFilter, setStatus] = useState("all");
-  const [page, setPage]           = useState(1);
-  const [teamDialog, setTeamDialog]     = useState<{ open: boolean; team: Team | null }>({ open: false, team: null });
+  const sp     = useSearchParams();
+  const router = useRouter();
+
+  const [search, setSearch]           = useState(() => sp.get("q") ?? "");
+  const [statusFilter, setStatus]     = useState(() => sp.get("status") ?? "all");
+  const [page, setPage]               = useState(() => Number(sp.get("page") ?? "1"));
+  const [teamDialog, setTeamDialog]   = useState<{ open: boolean; team: Team | null }>({ open: false, team: null });
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; team: Team | null }>({ open: false, team: null });
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (page > 1) params.set("page", String(page));
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [search, statusFilter, page]);
 
   const { data, isLoading } = useTeams({
     search:  search || undefined,
@@ -266,7 +277,7 @@ function AdminTeamsList() {
 
 // ─── Gate component — all hooks run unconditionally here ─────────────────────
 
-export default function TeamsPage() {
+function TeamsPageContent() {
   const { user } = useAuthStore();
   const router   = useRouter();
 
@@ -317,5 +328,17 @@ export default function TeamsPage() {
     <div className="flex h-64 items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
+  );
+}
+
+export default function TeamsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <TeamsPageContent />
+    </Suspense>
   );
 }

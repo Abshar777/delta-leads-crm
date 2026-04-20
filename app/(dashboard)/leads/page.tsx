@@ -36,6 +36,7 @@ import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { formatDate } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import type { Lead, LeadStatus } from "@/types/lead";
 import type { User } from "@/types";
 
@@ -132,19 +133,23 @@ function LeadsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ── Filter state ─────────────────────────────────────────────────────────────
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [status, setStatus] = useState<string>("all");
-  const [assignedTo, setAssignedTo] = useState<string>("all");
-  const [reporter, setReporter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [courseId, setCourseId] = useState<string>("all");
-  const [teamId, setTeamId] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
+  // ── Filter state — all initialised from URL params ───────────────────────────
+  const [search, setSearch]               = useState(() => searchParams.get("q") ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("q") ?? "");
+  const [page, setPage]                   = useState(() => Number(searchParams.get("page") ?? "1"));
+  const [limit, setLimit]                 = useState(() => Number(searchParams.get("limit") ?? "10"));
+  const [status, setStatus]               = useState<string>(() => searchParams.get("status") ?? "all");
+  const [assignedTo, setAssignedTo]       = useState<string>(() => searchParams.get("assignedTo") ?? "all");
+  const [reporter, setReporter]           = useState<string>(() => searchParams.get("reporter") ?? "all");
+  const [dateFrom, setDateFrom]           = useState<string>(() => searchParams.get("from") ?? "");
+  const [dateTo, setDateTo]               = useState<string>(() => searchParams.get("to") ?? "");
+  const [courseId, setCourseId]           = useState<string>(() => searchParams.get("course") ?? "all");
+  const [teamId, setTeamId]               = useState<string>(() => searchParams.get("team") ?? "all");
+  const [showFilters, setShowFilters]     = useState(() => {
+    // Auto-open filters panel if any filter param is present in URL
+    const sp = searchParams;
+    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to"));
+  });
 
   // ── View mode — synced to ?view= URL param ────────────────────────────────────
   const [viewMode, setViewMode] = useState<"table" | "kanban">(() => {
@@ -154,10 +159,24 @@ function LeadsPageContent() {
 
   function changeViewMode(mode: "table" | "kanban") {
     setViewMode(mode);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", mode);
-    router.replace(`?${params.toString()}`, { scroll: false });
   }
+
+  // ── Sync all filter state → URL ───────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (viewMode !== "table")   params.set("view", viewMode);
+    if (debouncedSearch)        params.set("q", debouncedSearch);
+    if (page > 1)               params.set("page", String(page));
+    if (limit !== 10)           params.set("limit", String(limit));
+    if (status !== "all")       params.set("status", status);
+    if (assignedTo !== "all")   params.set("assignedTo", assignedTo);
+    if (reporter !== "all")     params.set("reporter", reporter);
+    if (courseId !== "all")     params.set("course", courseId);
+    if (teamId !== "all")       params.set("team", teamId);
+    if (dateFrom)               params.set("from", dateFrom);
+    if (dateTo)                 params.set("to", dateTo);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo]);
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -1217,3 +1236,4 @@ export default function LeadsPage() {
     </Suspense>
   );
 }
+

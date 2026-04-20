@@ -1,10 +1,11 @@
 "use client";
-import { useState, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Plus, Search, X, Edit2, Trash2,
   IndianRupee, ChevronLeft, ChevronRight, BookMarked,
-  TrendingUp, Package,
+  TrendingUp, Package, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,18 +140,29 @@ function CourseCard({ course, onEdit, onDelete, index }: CourseCardProps) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page Content ────────────────────────────────────────────────────────
 
-export default function CoursesPage() {
-  const [search, setSearch]               = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter]   = useState<string>("all");
-  const [page, setPage]                   = useState(1);
-  const [dialogOpen, setDialogOpen]       = useState(false);
-  const [editCourse, setEditCourse]       = useState<Course | null>(null);
+function CoursesPageContent() {
+  const sp     = useSearchParams();
+  const router = useRouter();
+
+  const [search, setSearch]                   = useState(() => sp.get("q") ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => sp.get("q") ?? "");
+  const [statusFilter, setStatusFilter]       = useState<string>(() => sp.get("status") ?? "all");
+  const [page, setPage]                       = useState(() => Number(sp.get("page") ?? "1"));
+  const [dialogOpen, setDialogOpen]           = useState(false);
+  const [editCourse, setEditCourse]           = useState<Course | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteCourse, setDeleteCourse]   = useState<Course | null>(null);
+  const [deleteCourse, setDeleteCourse]       = useState<Course | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (page > 1) params.set("page", String(page));
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [debouncedSearch, statusFilter, page]);
 
   const { data, isLoading } = useCourses({
     search: debouncedSearch || undefined,
@@ -404,5 +416,17 @@ export default function CoursesPage() {
         course={deleteCourse}
       />
     </>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <CoursesPageContent />
+    </Suspense>
   );
 }

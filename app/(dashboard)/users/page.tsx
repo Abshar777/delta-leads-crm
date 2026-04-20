@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Plus, Search, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,15 +22,29 @@ import Link from "next/link";
 type SortField = "name" | "email" | "createdAt" | "status";
 type SortOrder = "asc" | "desc";
 
-export default function UsersPage() {
+function UsersPageContent() {
+  const sp = useSearchParams();
+  const router = useRouter();
   const { hasPermission } = useAuthStore();
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>("all");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [teamFilter, setTeamFilter] = useState<string>("all");
-  const [sortField, setSortField] = useState<SortField>("createdAt");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [search, setSearch] = useState(() => sp.get("q") ?? "");
+  const [page, setPage] = useState(() => Number(sp.get("page") ?? "1"));
+  const [status, setStatus] = useState<string>(() => sp.get("status") ?? "all");
+  const [roleFilter, setRoleFilter] = useState<string>(() => sp.get("role") ?? "all");
+  const [teamFilter, setTeamFilter] = useState<string>(() => sp.get("team") ?? "all");
+  const [sortField, setSortField] = useState<SortField>(() => (sp.get("sortBy") as SortField) ?? "createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => (sp.get("sortOrder") as SortOrder) ?? "desc");
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (page > 1) params.set("page", String(page));
+    if (status !== "all") params.set("status", status);
+    if (roleFilter !== "all") params.set("role", roleFilter);
+    if (teamFilter !== "all") params.set("team", teamFilter);
+    if (sortField !== "createdAt") params.set("sortBy", sortField);
+    if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [search, page, status, roleFilter, teamFilter, sortField, sortOrder]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -376,5 +391,17 @@ export default function UsersPage() {
         user={selectedUser}
       />
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <UsersPageContent />
+    </Suspense>
   );
 }
