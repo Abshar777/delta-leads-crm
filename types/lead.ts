@@ -83,6 +83,8 @@ export interface Lead {
   activityLogs: ActivityLog[];
   callNotConnected?: number;
   callCount?: number;
+  platform?: string;
+  campaign?: string;
   lastFollowupDate?: string | null;
   demoScheduled?: boolean;
   demoAttended?: boolean;
