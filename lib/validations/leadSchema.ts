@@ -2,11 +2,15 @@ import { z } from "zod";
 
 // Base fields shared by create + update
 const baseLeadFields = z.object({
-  name:   z.string().min(1, "Name is required").max(100, "Name too long"),
-  email:  z.string().email("Invalid email address").optional().or(z.literal("")),
-  phone:  z.string().min(1, "Phone is required").max(20, "Phone too long"),
-  source: z.string().optional(),
-  course: z.string().optional().nullable(),
+  name:       z.string().min(1, "Name is required").max(100, "Name too long"),
+  email:      z.string().email("Invalid email address").optional().or(z.literal("")),
+  phone:      z.string().min(1, "Phone is required").max(20, "Phone too long"),
+  source:     z.string().optional(),
+  campaignId:      z.string().max(100, "Campaign ID too long").optional(),
+  course:          z.string().optional().nullable(),
+  lastFollowupDate: z.string().optional().nullable(),
+  demoScheduled:   z.boolean().optional(),
+  demoAttended:    z.boolean().optional(),
 });
 
 // Create — adds optional team + assignedTo

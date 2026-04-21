@@ -70,6 +70,7 @@ export interface Lead {
   email?: string;
   phone?: string;
   source?: string;
+  campaignId?: string;
   status: LeadStatus;
   course?: Course | string | null;
   assignedTo?: User | string | null;
@@ -81,6 +82,9 @@ export interface Lead {
   payments: Payment[];
   activityLogs: ActivityLog[];
   callNotConnected?: number;
+  lastFollowupDate?: string | null;
+  demoScheduled?: boolean;
+  demoAttended?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +97,11 @@ export interface LeadFilters {
   team?: string;
   reporter?: string;
   course?: string;
+  campaignId?: string;
+  demoScheduled?: string;
+  demoAttended?: string;
+  followupFrom?: string;
+  followupTo?: string;
   search?: string;
   /** YYYY-MM-DD — leads created on or after this date */
   dateFrom?: string;

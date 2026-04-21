@@ -30,8 +30,13 @@ export const useLeads = (filters?: LeadFilters) => {
       if (filters?.reporter)   params.reporter   = filters.reporter;
       if (filters?.search)     params.search     = filters.search;
       if (filters?.course)     params.course     = filters.course;
-      if (filters?.dateFrom)   params.dateFrom   = filters.dateFrom;
-      if (filters?.dateTo)     params.dateTo     = filters.dateTo;
+      if (filters?.campaignId)    params.campaignId    = filters.campaignId;
+      if (filters?.demoScheduled) params.demoScheduled = filters.demoScheduled;
+      if (filters?.demoAttended)  params.demoAttended  = filters.demoAttended;
+      if (filters?.followupFrom)  params.followupFrom  = filters.followupFrom;
+      if (filters?.followupTo)    params.followupTo    = filters.followupTo;
+      if (filters?.dateFrom)      params.dateFrom      = filters.dateFrom;
+      if (filters?.dateTo)        params.dateTo        = filters.dateTo;
       const response = await api.get<ApiResponse<Lead[]>>("/leads", { params });
       return { data: response.data.data ?? [], pagination: response.data.pagination };
     },

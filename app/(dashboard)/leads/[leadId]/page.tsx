@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -615,6 +616,20 @@ export default function LeadDetailPage() {
                   </div>
                 )}
 
+                {lead.lastFollowupDate && (
+                  <InfoRow icon={Calendar} label="Last Follow-up" value={new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} />
+                )}
+                {/* Demo badges */}
+                {(lead.demoScheduled || lead.demoAttended) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {lead.demoScheduled && (
+                      <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400 border border-violet-500/20">Demo Scheduled</span>
+                    )}
+                    {lead.demoAttended && (
+                      <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">Demo Attended</span>
+                    )}
+                  </div>
+                )}
                 <InfoRow icon={Calendar} label="Created" value={formatDate(lead.createdAt)} />
                 <InfoRow icon={Clock} label="Last Updated" value={formatDate(lead.updatedAt)} />
 
@@ -737,6 +752,67 @@ export default function LeadDetailPage() {
                               </span>
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Last Follow-up Date */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Last Follow-up Date
+                      </p>
+                      <Input
+                        type="date"
+                        className="h-8 text-xs [color-scheme:dark]"
+                        defaultValue={lead.lastFollowupDate ? lead.lastFollowupDate.slice(0, 10) : ""}
+                        key={lead.lastFollowupDate ?? "none"}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (val !== (lead.lastFollowupDate?.slice(0, 10) ?? "")) {
+                            updateLead.mutate({ id: lead._id, data: { lastFollowupDate: val || null } as never });
+                          }
+                        }}
+                        disabled={updateLead.isPending}
+                      />
+                    </div>
+
+                    {/* Demo Scheduled */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">Demo Scheduled?</p>
+                      <Select
+                        value={lead.demoScheduled ? "true" : "false"}
+                        onValueChange={(val) =>
+                          updateLead.mutate({ id: lead._id, data: { demoScheduled: val === "true" } as never })
+                        }
+                        disabled={updateLead.isPending}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="false" className="text-xs">No</SelectItem>
+                          <SelectItem value="true" className="text-xs">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Demo Attended */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">Demo Attended?</p>
+                      <Select
+                        value={lead.demoAttended ? "true" : "false"}
+                        onValueChange={(val) =>
+                          updateLead.mutate({ id: lead._id, data: { demoAttended: val === "true" } as never })
+                        }
+                        disabled={updateLead.isPending}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="false" className="text-xs">No</SelectItem>
+                          <SelectItem value="true" className="text-xs">Yes</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

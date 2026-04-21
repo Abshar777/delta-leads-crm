@@ -36,7 +36,6 @@ import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { formatDate } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import type { Lead, LeadStatus } from "@/types/lead";
 import type { User } from "@/types";
 
@@ -145,10 +144,14 @@ function LeadsPageContent() {
   const [dateTo, setDateTo]               = useState<string>(() => searchParams.get("to") ?? "");
   const [courseId, setCourseId]           = useState<string>(() => searchParams.get("course") ?? "all");
   const [teamId, setTeamId]               = useState<string>(() => searchParams.get("team") ?? "all");
+  const [demoScheduled, setDemoScheduled] = useState<string>(() => searchParams.get("demoScheduled") ?? "all");
+  const [demoAttended, setDemoAttended]   = useState<string>(() => searchParams.get("demoAttended") ?? "all");
+  const [followupFrom, setFollowupFrom]   = useState<string>(() => searchParams.get("followupFrom") ?? "");
+  const [followupTo, setFollowupTo]       = useState<string>(() => searchParams.get("followupTo") ?? "");
   const [showFilters, setShowFilters]     = useState(() => {
     // Auto-open filters panel if any filter param is present in URL
     const sp = searchParams;
-    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to"));
+    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom"));
   });
 
   // ── View mode — synced to ?view= URL param ────────────────────────────────────
@@ -173,10 +176,14 @@ function LeadsPageContent() {
     if (reporter !== "all")     params.set("reporter", reporter);
     if (courseId !== "all")     params.set("course", courseId);
     if (teamId !== "all")       params.set("team", teamId);
-    if (dateFrom)               params.set("from", dateFrom);
-    if (dateTo)                 params.set("to", dateTo);
+    if (dateFrom)                    params.set("from", dateFrom);
+    if (dateTo)                      params.set("to", dateTo);
+    if (demoScheduled !== "all")     params.set("demoScheduled", demoScheduled);
+    if (demoAttended !== "all")      params.set("demoAttended", demoAttended);
+    if (followupFrom)                params.set("followupFrom", followupFrom);
+    if (followupTo)                  params.set("followupTo", followupTo);
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo]);
+  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo]);
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -200,7 +207,7 @@ function LeadsPageContent() {
   const { mutate: updateStatus } = useUpdateLeadStatus();
 
   // Clear selection when page/filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId]);
+  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, demoScheduled, demoAttended, followupFrom, followupTo]);
 
   const toggleId = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -254,7 +261,11 @@ function LeadsPageContent() {
     ...(teamId !== "all" ? { team: teamId } : {}),
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
-  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo]);
+    ...(demoScheduled !== "all" ? { demoScheduled } : {}),
+    ...(demoAttended !== "all" ? { demoAttended } : {}),
+    ...(followupFrom ? { followupFrom } : {}),
+    ...(followupTo ? { followupTo } : {}),
+  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo]);
 
   const { data, isLoading, isFetching } = useLeads(filters);
   const { data: usersData } = useUsers({ status: "active", limit: "200" });
@@ -300,6 +311,10 @@ function LeadsPageContent() {
     teamId !== "all",
     !!dateFrom,
     !!dateTo,
+    demoScheduled !== "all",
+    demoAttended !== "all",
+    !!followupFrom,
+    !!followupTo,
     !!debouncedSearch,
   ].filter(Boolean).length;
 
@@ -313,6 +328,10 @@ function LeadsPageContent() {
     setTeamId("all");
     setDateFrom("");
     setDateTo("");
+    setDemoScheduled("all");
+    setDemoAttended("all");
+    setFollowupFrom("");
+    setFollowupTo("");
     setSearch("");
     setDebouncedSearch("");
     setPage(1);
@@ -596,6 +615,61 @@ function LeadsPageContent() {
                         />
                       </div>
                     </div>
+
+                    {/* Last Follow-up Date Range */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        Last Follow-up Date
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="date"
+                          value={followupFrom}
+                          max={followupTo || undefined}
+                          onChange={(e) => { setFollowupFrom(e.target.value); setPage(1); }}
+                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">to</span>
+                        <Input
+                          type="date"
+                          value={followupTo}
+                          min={followupFrom || undefined}
+                          onChange={(e) => { setFollowupTo(e.target.value); setPage(1); }}
+                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Demo Scheduled */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Demo Scheduled</p>
+                      <Select value={demoScheduled} onValueChange={(v) => applyFilter(setDemoScheduled, v)}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Demo Attended */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Demo Attended</p>
+                      <Select value={demoAttended} onValueChange={(v) => applyFilter(setDemoAttended, v)}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -637,6 +711,18 @@ function LeadsPageContent() {
                 )}
                 {dateTo && (
                   <FilterPill label={`To: ${dateTo}`} onRemove={() => { setDateTo(""); setPage(1); }} />
+                )}
+                {followupFrom && (
+                  <FilterPill label={`Followup From: ${followupFrom}`} onRemove={() => { setFollowupFrom(""); setPage(1); }} />
+                )}
+                {followupTo && (
+                  <FilterPill label={`Followup To: ${followupTo}`} onRemove={() => { setFollowupTo(""); setPage(1); }} />
+                )}
+                {demoScheduled !== "all" && (
+                  <FilterPill label={`Demo Scheduled: ${demoScheduled === "true" ? "Yes" : "No"}`} onRemove={() => applyFilter(setDemoScheduled, "all")} />
+                )}
+                {demoAttended !== "all" && (
+                  <FilterPill label={`Demo Attended: ${demoAttended === "true" ? "Yes" : "No"}`} onRemove={() => applyFilter(setDemoAttended, "all")} />
                 )}
               </motion.div>
             )}
@@ -763,6 +849,20 @@ function LeadsPageContent() {
                                 <span className="text-[11px] text-muted-foreground/60 capitalize">{lead.source}</span>
                               )}
                             </div>
+                            {/* Demo / Followup row */}
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                              {lead.lastFollowupDate && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  Followup: {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
+                                </span>
+                              )}
+                              {lead.demoScheduled && (
+                                <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-400">Demo Scheduled</span>
+                              )}
+                              {lead.demoAttended && (
+                                <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-400">Demo Attended</span>
+                              )}
+                            </div>
                           </div>
                           {/* Actions */}
                           <div className="flex items-center gap-0.5 shrink-0">
@@ -810,6 +910,8 @@ function LeadsPageContent() {
                         <th className="px-4 py-3 text-left hidden xl:table-cell">Assigned At</th>
                         <th className="px-4 py-3 text-left hidden xl:table-cell">Reporter</th>
                         <th className="px-4 py-3 text-left hidden xl:table-cell">Created</th>
+                        <th className="px-4 py-3 text-left hidden lg:table-cell">Last Followup</th>
+                        <th className="px-4 py-3 text-left hidden lg:table-cell">Demo</th>
                         <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -913,6 +1015,27 @@ function LeadsPageContent() {
                             </td>
                             <td className="px-4 py-4 hidden xl:table-cell">
                               <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
+                            </td>
+                            <td className="px-4 py-4 hidden lg:table-cell">
+                              {lead.lastFollowupDate ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground/40">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4 hidden lg:table-cell">
+                              <div className="flex flex-col gap-1">
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoScheduled ? "bg-violet-500/10 text-violet-400" : "bg-muted/40 text-muted-foreground/50"}`}>
+                                  {lead.demoScheduled ? "✓ Scheduled" : "Not scheduled"}
+                                </span>
+                                {lead.demoScheduled && (
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoAttended ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
+                                    {lead.demoAttended ? "✓ Attended" : "Not attended"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-4">
                               <div className="flex items-center justify-end gap-1">

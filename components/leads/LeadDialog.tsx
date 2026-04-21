@@ -91,28 +91,44 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
     if (open) {
       if (lead) {
         reset({
-          name:   lead.name,
-          email:  lead.email ?? "",
-          phone:  lead.phone ?? "",
-          source: lead.source ?? "",
+          name:            lead.name,
+          email:           lead.email ?? "",
+          phone:           lead.phone ?? "",
+          source:          lead.source ?? "",
+          campaignId:      lead.campaignId ?? "",
+          lastFollowupDate: lead.lastFollowupDate
+            ? lead.lastFollowupDate.slice(0, 10)
+            : "",
+          demoScheduled:   lead.demoScheduled ?? false,
+          demoAttended:    lead.demoAttended ?? false,
           course: (typeof lead.course === "object" && lead.course !== null)
             ? (lead.course as { _id: string })._id
             : (lead.course as string | null | undefined) ?? "",
         } as UpdateLeadFormValues as never);
       } else {
-        reset({ name: "", email: "", phone: "", source: "", course: "", team: "", assignedTo: "" });
+        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, course: "", team: "", assignedTo: "" });
       }
     }
   }, [open, lead, reset]);
 
   const onSubmit = (data: CreateLeadFormValues) => {
+    const extended = data as CreateLeadFormValues & {
+      campaignId?: string;
+      lastFollowupDate?: string;
+      demoScheduled?: boolean;
+      demoAttended?: boolean;
+    };
     const payload = {
       ...data,
-      email:      data.email      || undefined,
-      source:     data.source     || undefined,
-      course:     data.course     || undefined,
-      team:       (data as CreateLeadFormValues).team       || undefined,
-      assignedTo: (data as CreateLeadFormValues).assignedTo || undefined,
+      email:            data.email      || undefined,
+      source:           data.source     || undefined,
+      campaignId:       extended.campaignId || undefined,
+      lastFollowupDate: extended.lastFollowupDate || undefined,
+      demoScheduled:    extended.demoScheduled ?? false,
+      demoAttended:     extended.demoAttended ?? false,
+      course:           data.course     || undefined,
+      team:             (data as CreateLeadFormValues).team       || undefined,
+      assignedTo:       (data as CreateLeadFormValues).assignedTo || undefined,
     };
 
     if (isEditing && lead) {
@@ -166,6 +182,68 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
                       {SOURCES.map((s) => (
                         <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            {/* Campaign ID */}
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-campaign">Campaign ID</Label>
+              <Input
+                id="lead-campaign"
+                placeholder="e.g. JUNE-FB-001"
+                {...register("campaignId" as never)}
+              />
+            </div>
+
+            {/* Last Follow-up Date */}
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-followup">Last Follow-up Date</Label>
+              <Input
+                id="lead-followup"
+                type="date"
+                {...register("lastFollowupDate" as never)}
+              />
+            </div>
+
+            {/* Demo Scheduled */}
+            <div className="space-y-1.5">
+              <Label>Demo Scheduled?</Label>
+              <Controller
+                name={"demoScheduled" as never}
+                control={control}
+                render={({ field }: { field: { value: boolean; onChange: (v: boolean) => void } }) => (
+                  <Select
+                    value={field.value ? "true" : "false"}
+                    onValueChange={(v) => field.onChange(v === "true")}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="true">Yes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            {/* Demo Attended */}
+            <div className="space-y-1.5">
+              <Label>Demo Attended?</Label>
+              <Controller
+                name={"demoAttended" as never}
+                control={control}
+                render={({ field }: { field: { value: boolean; onChange: (v: boolean) => void } }) => (
+                  <Select
+                    value={field.value ? "true" : "false"}
+                    onValueChange={(v) => field.onChange(v === "true")}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="true">Yes</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
