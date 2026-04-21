@@ -42,52 +42,52 @@ import type { User } from "@/types";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: { value: LeadStatus | "all"; label: string }[] = [
-  { value: "all",           label: "All Status"      },
-  { value: "new",           label: "New"             },
-  { value: "assigned",      label: "Assigned"        },
-  { value: "followup",      label: "Follow Up"       },
-  { value: "interested",    label: "Interested"      },
-  { value: "cnc",           label: "CNC"             },
-  { value: "booking",       label: "Booking"         },
-  { value: "partialbooking",label: "Partial Booking" },
-  { value: "closed",        label: "Closed"          },
-  { value: "rejected",      label: "Rejected"        },
-  { value: "rnr",           label: "RNR"             },
-  { value: "callback",      label: "Call Back"       },
-  { value: "whatsapp",      label: "WhatsApp"        },
-  { value: "student",       label: "Student"         },
+  { value: "all", label: "All Status" },
+  { value: "new", label: "New" },
+  { value: "assigned", label: "Assigned" },
+  { value: "followup", label: "Follow Up" },
+  { value: "interested", label: "Interested" },
+  { value: "cnc", label: "CNC" },
+  { value: "booking", label: "Booking" },
+  { value: "partialbooking", label: "Partial Booking" },
+  { value: "closed", label: "Closed" },
+  { value: "rejected", label: "Rejected" },
+  { value: "rnr", label: "RNR" },
+  { value: "callback", label: "Call Back" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "student", label: "Student" },
 ];
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
-  new:            "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  assigned:       "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  followup:       "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  closed:         "bg-green-500/15 text-green-400 border-green-500/30",
-  rejected:       "bg-red-500/15 text-red-400 border-red-500/30",
-  cnc:            "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  booking:        "bg-teal-500/15 text-teal-400 border-teal-500/30",
+  new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  assigned: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  followup: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  closed: "bg-green-500/15 text-green-400 border-green-500/30",
+  rejected: "bg-red-500/15 text-red-400 border-red-500/30",
+  cnc: "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  booking: "bg-teal-500/15 text-teal-400 border-teal-500/30",
   partialbooking: "bg-pink-500/15 text-pink-400 border-pink-500/30",
-  interested:     "bg-violet-500/15 text-violet-400 border-violet-500/30",
-  rnr:            "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  callback:       "bg-sky-500/15 text-sky-400 border-sky-500/30",
-  whatsapp:       "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  student:        "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+  interested: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+  rnr: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  callback: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+  whatsapp: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  student: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
 };
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
-  new:            "New",
-  assigned:       "Assigned",
-  followup:       "Follow Up",
-  closed:         "Closed",
-  rejected:       "Rejected",
-  cnc:            "CNC",
-  booking:        "Booking",
+  new: "New",
+  assigned: "Assigned",
+  followup: "Follow Up",
+  closed: "Closed",
+  rejected: "Rejected",
+  cnc: "CNC",
+  booking: "Booking",
   partialbooking: "Partial Booking",
-  interested:     "Interested",
-  rnr:            "RNR",
-  callback:       "Call Back",
-  whatsapp:       "WhatsApp",
-  student:        "Student",
+  interested: "Interested",
+  rnr: "RNR",
+  callback: "Call Back",
+  whatsapp: "WhatsApp",
+  student: "Student",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -133,22 +133,22 @@ function LeadsPageContent() {
   const searchParams = useSearchParams();
 
   // ── Filter state — all initialised from URL params ───────────────────────────
-  const [search, setSearch]               = useState(() => searchParams.get("q") ?? "");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("q") ?? "");
-  const [page, setPage]                   = useState(() => Number(searchParams.get("page") ?? "1"));
-  const [limit, setLimit]                 = useState(() => Number(searchParams.get("limit") ?? "10"));
-  const [status, setStatus]               = useState<string>(() => searchParams.get("status") ?? "all");
-  const [assignedTo, setAssignedTo]       = useState<string>(() => searchParams.get("assignedTo") ?? "all");
-  const [reporter, setReporter]           = useState<string>(() => searchParams.get("reporter") ?? "all");
-  const [dateFrom, setDateFrom]           = useState<string>(() => searchParams.get("from") ?? "");
-  const [dateTo, setDateTo]               = useState<string>(() => searchParams.get("to") ?? "");
-  const [courseId, setCourseId]           = useState<string>(() => searchParams.get("course") ?? "all");
-  const [teamId, setTeamId]               = useState<string>(() => searchParams.get("team") ?? "all");
+  const [page, setPage] = useState(() => Number(searchParams.get("page") ?? "1"));
+  const [limit, setLimit] = useState(() => Number(searchParams.get("limit") ?? "10"));
+  const [status, setStatus] = useState<string>(() => searchParams.get("status") ?? "all");
+  const [assignedTo, setAssignedTo] = useState<string>(() => searchParams.get("assignedTo") ?? "all");
+  const [reporter, setReporter] = useState<string>(() => searchParams.get("reporter") ?? "all");
+  const [dateFrom, setDateFrom] = useState<string>(() => searchParams.get("from") ?? "");
+  const [dateTo, setDateTo] = useState<string>(() => searchParams.get("to") ?? "");
+  const [courseId, setCourseId] = useState<string>(() => searchParams.get("course") ?? "all");
+  const [teamId, setTeamId] = useState<string>(() => searchParams.get("team") ?? "all");
   const [demoScheduled, setDemoScheduled] = useState<string>(() => searchParams.get("demoScheduled") ?? "all");
-  const [demoAttended, setDemoAttended]   = useState<string>(() => searchParams.get("demoAttended") ?? "all");
-  const [followupFrom, setFollowupFrom]   = useState<string>(() => searchParams.get("followupFrom") ?? "");
-  const [followupTo, setFollowupTo]       = useState<string>(() => searchParams.get("followupTo") ?? "");
-  const [showFilters, setShowFilters]     = useState(() => {
+  const [demoAttended, setDemoAttended] = useState<string>(() => searchParams.get("demoAttended") ?? "all");
+  const [followupFrom, setFollowupFrom] = useState<string>(() => searchParams.get("followupFrom") ?? "");
+  const [followupTo, setFollowupTo] = useState<string>(() => searchParams.get("followupTo") ?? "");
+  const [showFilters, setShowFilters] = useState(() => {
     // Auto-open filters panel if any filter param is present in URL
     const sp = searchParams;
     return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom"));
@@ -167,21 +167,21 @@ function LeadsPageContent() {
   // ── Sync all filter state → URL ───────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams();
-    if (viewMode !== "table")   params.set("view", viewMode);
-    if (debouncedSearch)        params.set("q", debouncedSearch);
-    if (page > 1)               params.set("page", String(page));
-    if (limit !== 10)           params.set("limit", String(limit));
-    if (status !== "all")       params.set("status", status);
-    if (assignedTo !== "all")   params.set("assignedTo", assignedTo);
-    if (reporter !== "all")     params.set("reporter", reporter);
-    if (courseId !== "all")     params.set("course", courseId);
-    if (teamId !== "all")       params.set("team", teamId);
-    if (dateFrom)                    params.set("from", dateFrom);
-    if (dateTo)                      params.set("to", dateTo);
-    if (demoScheduled !== "all")     params.set("demoScheduled", demoScheduled);
-    if (demoAttended !== "all")      params.set("demoAttended", demoAttended);
-    if (followupFrom)                params.set("followupFrom", followupFrom);
-    if (followupTo)                  params.set("followupTo", followupTo);
+    if (viewMode !== "table") params.set("view", viewMode);
+    if (debouncedSearch) params.set("q", debouncedSearch);
+    if (page > 1) params.set("page", String(page));
+    if (limit !== 10) params.set("limit", String(limit));
+    if (status !== "all") params.set("status", status);
+    if (assignedTo !== "all") params.set("assignedTo", assignedTo);
+    if (reporter !== "all") params.set("reporter", reporter);
+    if (courseId !== "all") params.set("course", courseId);
+    if (teamId !== "all") params.set("team", teamId);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
+    if (demoScheduled !== "all") params.set("demoScheduled", demoScheduled);
+    if (demoAttended !== "all") params.set("demoAttended", demoAttended);
+    if (followupFrom) params.set("followupFrom", followupFrom);
+    if (followupTo) params.set("followupTo", followupTo);
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo]);
 
@@ -225,15 +225,14 @@ function LeadsPageContent() {
     });
   }, []);
 
-  // Debounce search → sends to backend
-  useEffect(() => {
+  function handleSearchChange(val: string) {
+    setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(search);
+      setDebouncedSearch(val);
       setPage(1);
     }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search]);
+  }
 
   // Reset page when any filter changes
   function applyFilter(setter: (v: string) => void, value: string) {
@@ -400,11 +399,11 @@ function LeadsPageContent() {
                   placeholder="Search by name, email, phone…"
                   className="pl-9"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
                 {search && (
                   <button
-                    onClick={() => setSearch("")}
+                    onClick={() => { if (debounceRef.current) clearTimeout(debounceRef.current); setSearch(""); setDebouncedSearch(""); setPage(1); }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -436,11 +435,10 @@ function LeadsPageContent() {
                     whileTap={{ scale: 0.93 }}
                     onClick={() => changeViewMode("table")}
                     title="Table view"
-                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${
-                      viewMode === "table"
+                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${viewMode === "table"
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     <List className="h-3.5 w-3.5" />
                   </motion.button>
@@ -448,11 +446,10 @@ function LeadsPageContent() {
                     whileTap={{ scale: 0.93 }}
                     onClick={() => changeViewMode("kanban")}
                     title="Kanban view"
-                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${
-                      viewMode === "kanban"
+                    className={`flex h-7 w-7 items-center justify-center rounded-md transition-all ${viewMode === "kanban"
                         ? "bg-background text-primary shadow-sm"
                         : "text-muted-foreground hover:text-foreground"
-                    }`}
+                      }`}
                   >
                     <LayoutGrid className="h-3.5 w-3.5" />
                   </motion.button>
@@ -547,29 +544,7 @@ function LeadsPageContent() {
                         </Select>
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        Last Follow-up Date
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          type="date"
-                          value={followupFrom}
-                          max={followupTo || undefined}
-                          onChange={(e) => { setFollowupFrom(e.target.value); setPage(1); }}
-                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
-                        />
-                        <span className="text-xs text-muted-foreground shrink-0">to</span>
-                        <Input
-                          type="date"
-                          value={followupTo}
-                          min={followupFrom || undefined}
-                          onChange={(e) => { setFollowupTo(e.target.value); setPage(1); }}
-                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
-                        />
-                      </div>
-                    </div>
+
 
                     {/* Demo Scheduled */}
                     <div className="space-y-1">
@@ -619,8 +594,32 @@ function LeadsPageContent() {
                       </div>
                     )}
 
+                    <div className="md:block hidden"></div>
+                    <div className="space-y-2 ">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        Last Follow-up Date
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="date"
+                          value={followupFrom}
+                          max={followupTo || undefined}
+                          onChange={(e) => { setFollowupFrom(e.target.value); setPage(1); }}
+                          className="h-9 text-xs px-2 flex-1 [color-scheme:dark]"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">to</span>
+                        <Input
+                          type="date"
+                          value={followupTo}
+                          min={followupFrom || undefined}
+                          onChange={(e) => { setFollowupTo(e.target.value); setPage(1); }}
+                          className="h-9 text-xs px-2 flex-1 [color-scheme:dark]"
+                        />
+                      </div>
+                    </div>
                     {/* Date Range */}
-                    <div className="space-y-2">
+                    <div className="space-y-2 md:translate-x-20">
                       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                         <CalendarDays className="h-3 w-3" />
                         Date Range (Created)
@@ -630,11 +629,11 @@ function LeadsPageContent() {
                         {(["today", "week", "month", "year"] as const).map((p) => {
                           const labels = { today: "Today", week: "This Week", month: "This Month", year: "This Year" };
                           const getRangeFor = (period: string) => {
-                            const now = new Date(); const t = now.toISOString().slice(0,10);
+                            const now = new Date(); const t = now.toISOString().slice(0, 10);
                             if (period === "today") return { f: t, t };
-                            if (period === "week") { const m = new Date(now); m.setDate(now.getDate()-((now.getDay()+6)%7)); return { f: m.toISOString().slice(0,10), t }; }
-                            if (period === "month") return { f: new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10), t };
-                            return { f: new Date(now.getFullYear(),0,1).toISOString().slice(0,10), t };
+                            if (period === "week") { const m = new Date(now); m.setDate(now.getDate() - ((now.getDay() + 6) % 7)); return { f: m.toISOString().slice(0, 10), t }; }
+                            if (period === "month") return { f: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10), t };
+                            return { f: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10), t };
                           };
                           const range = getRangeFor(p);
                           const isActive = dateFrom === range.f && dateTo === range.t;
@@ -669,8 +668,9 @@ function LeadsPageContent() {
                       </div>
                     </div>
 
+
                     {/* Last Follow-up Date Range */}
-                    
+
                   </div>
                 </motion.div>
               )}
@@ -750,390 +750,390 @@ function LeadsPageContent() {
 
           {/* ── Table ──────────────────────────────────────────────────────────── */}
           {viewMode === "table" && (
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : leads.length === 0 ? (
-              <div className="py-20 text-center">
-                <FileText className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No leads found</p>
-                <p className="text-sm text-muted-foreground/60 mt-1">
-                  {hasActiveFilters ? "Try adjusting your filters" : "Create your first lead to get started"}
-                </p>
-                {canCreate && !hasActiveFilters && (
-                  <Button variant="outline" className="mt-4" onClick={handleCreate}>
-                    <Plus className="h-4 w-4 mr-1" /> Create first lead
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                {/* ── Mobile card list (< sm) ─────────────────────────────────── */}
-                <div className="sm:hidden divide-y divide-border">
-                  {/* Select-all row */}
-                  <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20">
-                    <Checkbox
-                      checked={leads.length > 0 && leads.every((l) => selectedIds.has(l._id))}
-                      onCheckedChange={() => toggleAll(leads.map((l) => l._id))}
-                      aria-label="Select all"
-                    />
-                    <span className="text-xs text-muted-foreground font-medium">Select all on this page</span>
-                  </div>
-                  <AnimatePresence>
-                    {leads.map((lead, i) => (
-                      <motion.div
-                        key={lead._id}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ delay: i * 0.025 }}
-                        className={`px-4 py-3 transition-colors ${selectedIds.has(lead._id) ? "bg-primary/5" : ""}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={selectedIds.has(lead._id)}
-                            onCheckedChange={() => toggleId(lead._id)}
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label="Select lead"
-                            className="mt-0.5 shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            {/* Name + status */}
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <p className="font-medium text-sm truncate">{lead.name}</p>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
-                                  asChild
-                                >
-                                  <button className="flex items-center gap-0.5 shrink-0">
-                                    <StatusBadge status={lead.status} />
-                                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
-                                    <DropdownMenuItem
-                                      key={s}
-                                      onClick={() => handleStatusChange(lead, s)}
-                                      className={lead.status === s ? "font-semibold" : ""}
-                                    >
-                                      <StatusBadge status={s} />
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                            {/* Contact */}
-                            {lead.email && <p className="text-xs text-muted-foreground mt-0.5 truncate">{lead.email}</p>}
-                            {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
-                            {/* Meta row */}
-                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                              {lead.team && (
-                                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                                  {typeof lead.team === "object" ? lead.team.name : lead.team}
-                                </span>
-                              )}
-                              {lead.assignedTo && (
-                                <span className="text-[11px] text-muted-foreground">
-                                  {getUserName(lead.assignedTo as User | string | null)}
-                                  {lead.assignedAt && (
-                                    <span className="ml-1 text-muted-foreground/50">
-                                      · {new Date(lead.assignedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}
-                                    </span>
-                                  )}
-                                </span>
-                              )}
-                              {lead.source && (
-                                <span className="text-[11px] text-muted-foreground/60 capitalize">{lead.source}</span>
-                              )}
-                            </div>
-                            {/* Demo / Followup row */}
-                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
-                              {lead.lastFollowupDate && (
-                                <span className="text-[11px] text-muted-foreground">
-                                  Followup: {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
-                                </span>
-                              )}
-                              {lead.demoScheduled && (
-                                <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-400">Demo Scheduled</span>
-                              )}
-                              {lead.demoAttended && (
-                                <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-400">Demo Attended</span>
-                              )}
-                            </div>
-                          </div>
-                          {/* Actions */}
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <Link href={`/leads/${lead._id}`}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View">
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            {canEdit && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(lead)} title="Edit">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(lead)} title="Delete">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-
-                {/* ── Desktop table (≥ sm) ────────────────────────────────────── */}
-                <div className="hidden sm:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        <th className="pl-4 pr-2 py-3 w-10">
-                          <Checkbox
-                            checked={leads.length > 0 && leads.every((l) => selectedIds.has(l._id))}
-                            onCheckedChange={() => toggleAll(leads.map((l) => l._id))}
-                            aria-label="Select all"
-                          />
-                        </th>
-                        <th className="px-4 py-3 text-left">Name</th>
-                        <th className="px-4 py-3 text-left">Contact</th>
-                        <th className="px-4 py-3 text-left hidden md:table-cell">Source</th>
-                        <th className="px-4 py-3 text-left hidden xl:table-cell">Course</th>
-                        <th className="px-4 py-3 text-left">Status</th>
-                        <th className="px-4 py-3 text-left hidden lg:table-cell">Team</th>
-                        <th className="px-4 py-3 text-left hidden lg:table-cell">Assigned To</th>
-                        <th className="px-4 py-3 text-left hidden xl:table-cell">Assigned At</th>
-                        <th className="px-4 py-3 text-left hidden xl:table-cell">Reporter</th>
-                        <th className="px-4 py-3 text-left hidden xl:table-cell">Created</th>
-                        <th className="px-4 py-3 text-left hidden lg:table-cell">Last Followup</th>
-                        <th className="px-4 py-3 text-left hidden lg:table-cell">Demo</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      <AnimatePresence>
-                        {leads.map((lead, i) => (
-                          <motion.tr
-                            key={lead._id}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 8 }}
-                            transition={{ delay: i * 0.025 }}
-                            className={`group hover:bg-muted/20 transition-colors ${selectedIds.has(lead._id) ? "bg-primary/5" : ""}`}
-                          >
-                            <td className="pl-4 pr-2 py-4">
-                              <Checkbox
-                                checked={selectedIds.has(lead._id)}
-                                onCheckedChange={() => toggleId(lead._id)}
-                                onClick={(e) => e.stopPropagation()}
-                                aria-label="Select lead"
-                              />
-                            </td>
-                            <td className="px-4 py-4">
-                              <p className="font-medium text-sm">{lead.name}</p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="space-y-0.5">
-                                {lead.email && <p className="text-sm text-muted-foreground">{lead.email}</p>}
-                                {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
-                                {!lead.email && !lead.phone && <span className="text-sm text-muted-foreground/50">—</span>}
+              ) : leads.length === 0 ? (
+                <div className="py-20 text-center">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground font-medium">No leads found</p>
+                  <p className="text-sm text-muted-foreground/60 mt-1">
+                    {hasActiveFilters ? "Try adjusting your filters" : "Create your first lead to get started"}
+                  </p>
+                  {canCreate && !hasActiveFilters && (
+                    <Button variant="outline" className="mt-4" onClick={handleCreate}>
+                      <Plus className="h-4 w-4 mr-1" /> Create first lead
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* ── Mobile card list (< sm) ─────────────────────────────────── */}
+                  <div className="sm:hidden divide-y divide-border">
+                    {/* Select-all row */}
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-muted/20">
+                      <Checkbox
+                        checked={leads.length > 0 && leads.every((l) => selectedIds.has(l._id))}
+                        onCheckedChange={() => toggleAll(leads.map((l) => l._id))}
+                        aria-label="Select all"
+                      />
+                      <span className="text-xs text-muted-foreground font-medium">Select all on this page</span>
+                    </div>
+                    <AnimatePresence>
+                      {leads.map((lead, i) => (
+                        <motion.div
+                          key={lead._id}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ delay: i * 0.025 }}
+                          className={`px-4 py-3 transition-colors ${selectedIds.has(lead._id) ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={selectedIds.has(lead._id)}
+                              onCheckedChange={() => toggleId(lead._id)}
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label="Select lead"
+                              className="mt-0.5 shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              {/* Name + status */}
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <p className="font-medium text-sm truncate">{lead.name}</p>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
+                                    asChild
+                                  >
+                                    <button className="flex items-center gap-0.5 shrink-0">
+                                      <StatusBadge status={lead.status} />
+                                      <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
+                                      <DropdownMenuItem
+                                        key={s}
+                                        onClick={() => handleStatusChange(lead, s)}
+                                        className={lead.status === s ? "font-semibold" : ""}
+                                      >
+                                        <StatusBadge status={s} />
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
-                            </td>
-                            <td className="px-4 py-4 hidden md:table-cell">
-                              <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
-                            </td>
-                            <td className="px-4 py-4 hidden xl:table-cell">
-                              {lead.course ? (
-                                <span className="text-sm text-muted-foreground">
-                                  {typeof lead.course === "object" ? lead.course.name : lead.course}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground/40">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
-                                  asChild
-                                >
-                                  <button className="flex items-center gap-1 group/status">
-                                    <StatusBadge status={lead.status} />
-                                    <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/status:opacity-100 transition-opacity" />
-                                  </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                  {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
-                                    <DropdownMenuItem
-                                      key={s}
-                                      onClick={() => handleStatusChange(lead, s)}
-                                      className={lead.status === s ? "font-semibold" : ""}
-                                    >
-                                      <StatusBadge status={s} />
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                            <td className="px-4 py-4 hidden lg:table-cell">
-                              {lead.team ? (
-                                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                                  {typeof lead.team === "object" ? lead.team.name : lead.team}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/50">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 hidden lg:table-cell">
-                              <span className="text-sm text-muted-foreground">
-                                {getUserName(lead.assignedTo as User | string | null)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 hidden xl:table-cell">
-                              {lead.assignedAt ? (
-                                <div className="space-y-0.5">
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(lead.assignedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
-                                  </p>
-                                  <p className="text-[11px] text-muted-foreground/60">
-                                    {new Date(lead.assignedAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })} IST
-                                  </p>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/40">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 hidden xl:table-cell">
-                              <span className="text-sm text-muted-foreground">
-                                {getUserName(lead.reporter as User | string | null)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 hidden xl:table-cell">
-                              <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
-                            </td>
-                            <td className="px-4 py-4 hidden lg:table-cell">
-                              {lead.lastFollowupDate ? (
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground/40">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 hidden lg:table-cell">
-                              <div className="flex flex-col gap-1">
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoScheduled ? "bg-violet-500/10 text-violet-400" : "bg-muted/40 text-muted-foreground/50"}`}>
-                                  {lead.demoScheduled ? "✓ Scheduled" : "Not scheduled"}
-                                </span>
-                                {lead.demoScheduled && (
-                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoAttended ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
-                                    {lead.demoAttended ? "✓ Attended" : "Not attended"}
+                              {/* Contact */}
+                              {lead.email && <p className="text-xs text-muted-foreground mt-0.5 truncate">{lead.email}</p>}
+                              {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
+                              {/* Meta row */}
+                              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                                {lead.team && (
+                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                                    {typeof lead.team === "object" ? lead.team.name : lead.team}
                                   </span>
                                 )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center justify-end gap-1">
-                                <Link href={`/leads/${lead._id}`}>
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary"
-                                    title="View Detail"
-                                  >
-                                    <ExternalLink className="h-4 w-4" />
-                                  </Button>
-                                </Link>
-                                {canEdit && (
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleEdit(lead)}
-                                    title="Edit"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
+                                {lead.assignedTo && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {getUserName(lead.assignedTo as User | string | null)}
+                                    {lead.assignedAt && (
+                                      <span className="ml-1 text-muted-foreground/50">
+                                        · {new Date(lead.assignedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}
+                                      </span>
+                                    )}
+                                  </span>
                                 )}
-                                {canDelete && (
-                                  <Button
-                                    variant="ghost" size="icon"
-                                    className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                    onClick={() => handleDelete(lead)}
-                                    title="Delete"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                {lead.source && (
+                                  <span className="text-[11px] text-muted-foreground/60 capitalize">{lead.source}</span>
                                 )}
                               </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-
-            {/* ── Pagination ──────────────────────────────────────────────────── */}
-            {pagination && pagination.totalPages >= 1 && (
-              <div className="flex items-center justify-between border-t border-border px-4 sm:px-6 py-3 sm:py-4 gap-2 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {pagination.total === 0 ? "No leads" : (
-                      <>
-                        <span className="hidden sm:inline">Showing </span>
-                        <span className="font-medium text-foreground">
-                          {(pagination.page - 1) * pagination.limit + 1}–
-                          {Math.min(pagination.page * pagination.limit, pagination.total)}
-                        </span>
-                        <span className="hidden sm:inline"> of </span>
-                        <span className="sm:hidden"> / </span>
-                        <span className="font-medium text-foreground">{pagination.total}</span>
-                        <span className="hidden sm:inline"> leads</span>
-                      </>
-                    )}
-                  </p>
-                  <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
-                    <SelectTrigger className="h-7 w-[70px] text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[10, 25, 50, 100].map((n) => (
-                        <SelectItem key={n} value={String(n)} className="text-xs">{n} / page</SelectItem>
+                              {/* Demo / Followup row */}
+                              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
+                                {lead.lastFollowupDate && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Followup: {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
+                                  </span>
+                                )}
+                                {lead.demoScheduled && (
+                                  <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-400">Demo Scheduled</span>
+                                )}
+                                {lead.demoAttended && (
+                                  <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-400">Demo Attended</span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Actions */}
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <Link href={`/leads/${lead._id}`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View">
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(lead)} title="Edit">
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(lead)} title="Delete">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {pagination.totalPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline" size="icon" className="h-8 w-8"
-                      disabled={!pagination.hasPrevPage || isFetching}
-                      onClick={() => setPage((p) => p - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium">
-                      {pagination.page} / {pagination.totalPages}
-                    </span>
-                    <Button
-                      variant="outline" size="icon" className="h-8 w-8"
-                      disabled={!pagination.hasNextPage || isFetching}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    </AnimatePresence>
                   </div>
-                )}
-              </div>
-            )}
-          </CardContent>
+
+                  {/* ── Desktop table (≥ sm) ────────────────────────────────────── */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          <th className="pl-4 pr-2 py-3 w-10">
+                            <Checkbox
+                              checked={leads.length > 0 && leads.every((l) => selectedIds.has(l._id))}
+                              onCheckedChange={() => toggleAll(leads.map((l) => l._id))}
+                              aria-label="Select all"
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left">Name</th>
+                          <th className="px-4 py-3 text-left">Contact</th>
+                          <th className="px-4 py-3 text-left hidden md:table-cell">Source</th>
+                          <th className="px-4 py-3 text-left hidden xl:table-cell">Course</th>
+                          <th className="px-4 py-3 text-left">Status</th>
+                          <th className="px-4 py-3 text-left hidden lg:table-cell">Team</th>
+                          <th className="px-4 py-3 text-left hidden lg:table-cell">Assigned To</th>
+                          <th className="px-4 py-3 text-left hidden xl:table-cell">Assigned At</th>
+                          <th className="px-4 py-3 text-left hidden xl:table-cell">Reporter</th>
+                          <th className="px-4 py-3 text-left hidden xl:table-cell">Created</th>
+                          <th className="px-4 py-3 text-left hidden lg:table-cell">Last Followup</th>
+                          <th className="px-4 py-3 text-left hidden lg:table-cell">Demo</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        <AnimatePresence>
+                          {leads.map((lead, i) => (
+                            <motion.tr
+                              key={lead._id}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 8 }}
+                              transition={{ delay: i * 0.025 }}
+                              className={`group hover:bg-muted/20 transition-colors ${selectedIds.has(lead._id) ? "bg-primary/5" : ""}`}
+                            >
+                              <td className="pl-4 pr-2 py-4">
+                                <Checkbox
+                                  checked={selectedIds.has(lead._id)}
+                                  onCheckedChange={() => toggleId(lead._id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="Select lead"
+                                />
+                              </td>
+                              <td className="px-4 py-4">
+                                <p className="font-medium text-sm">{lead.name}</p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="space-y-0.5">
+                                  {lead.email && <p className="text-sm text-muted-foreground">{lead.email}</p>}
+                                  {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
+                                  {!lead.email && !lead.phone && <span className="text-sm text-muted-foreground/50">—</span>}
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 hidden md:table-cell">
+                                <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
+                              </td>
+                              <td className="px-4 py-4 hidden xl:table-cell">
+                                {lead.course ? (
+                                  <span className="text-sm text-muted-foreground">
+                                    {typeof lead.course === "object" ? lead.course.name : lead.course}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground/40">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger
+                                    disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
+                                    asChild
+                                  >
+                                    <button className="flex items-center gap-1 group/status">
+                                      <StatusBadge status={lead.status} />
+                                      <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/status:opacity-100 transition-opacity" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="start">
+                                    {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
+                                      <DropdownMenuItem
+                                        key={s}
+                                        onClick={() => handleStatusChange(lead, s)}
+                                        className={lead.status === s ? "font-semibold" : ""}
+                                      >
+                                        <StatusBadge status={s} />
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </td>
+                              <td className="px-4 py-4 hidden lg:table-cell">
+                                {lead.team ? (
+                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                    {typeof lead.team === "object" ? lead.team.name : lead.team}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/50">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 hidden lg:table-cell">
+                                <span className="text-sm text-muted-foreground">
+                                  {getUserName(lead.assignedTo as User | string | null)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 hidden xl:table-cell">
+                                {lead.assignedAt ? (
+                                  <div className="space-y-0.5">
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(lead.assignedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground/60">
+                                      {new Date(lead.assignedAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })} IST
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/40">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 hidden xl:table-cell">
+                                <span className="text-sm text-muted-foreground">
+                                  {getUserName(lead.reporter as User | string | null)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 hidden xl:table-cell">
+                                <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
+                              </td>
+                              <td className="px-4 py-4 hidden lg:table-cell">
+                                {lead.lastFollowupDate ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground/40">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 hidden lg:table-cell">
+                                <div className="flex flex-col gap-1">
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoScheduled ? "bg-violet-500/10 text-violet-400" : "bg-muted/40 text-muted-foreground/50"}`}>
+                                    {lead.demoScheduled ? "✓ Scheduled" : "Not scheduled"}
+                                  </span>
+                                  {lead.demoScheduled && (
+                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoAttended ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
+                                      {lead.demoAttended ? "✓ Attended" : "Not attended"}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Link href={`/leads/${lead._id}`}>
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary"
+                                      title="View Detail"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                  {canEdit && (
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handleEdit(lead)}
+                                      title="Edit"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {canDelete && (
+                                    <Button
+                                      variant="ghost" size="icon"
+                                      className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                      onClick={() => handleDelete(lead)}
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* ── Pagination ──────────────────────────────────────────────────── */}
+              {pagination && pagination.totalPages >= 1 && (
+                <div className="flex items-center justify-between border-t border-border px-4 sm:px-6 py-3 sm:py-4 gap-2 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {pagination.total === 0 ? "No leads" : (
+                        <>
+                          <span className="hidden sm:inline">Showing </span>
+                          <span className="font-medium text-foreground">
+                            {(pagination.page - 1) * pagination.limit + 1}–
+                            {Math.min(pagination.page * pagination.limit, pagination.total)}
+                          </span>
+                          <span className="hidden sm:inline"> of </span>
+                          <span className="sm:hidden"> / </span>
+                          <span className="font-medium text-foreground">{pagination.total}</span>
+                          <span className="hidden sm:inline"> leads</span>
+                        </>
+                      )}
+                    </p>
+                    <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+                      <SelectTrigger className="h-7 w-[70px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[10, 25, 50, 100].map((n) => (
+                          <SelectItem key={n} value={String(n)} className="text-xs">{n} / page</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {pagination.totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline" size="icon" className="h-8 w-8"
+                        disabled={!pagination.hasPrevPage || isFetching}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm font-medium">
+                        {pagination.page} / {pagination.totalPages}
+                      </span>
+                      <Button
+                        variant="outline" size="icon" className="h-8 w-8"
+                        disabled={!pagination.hasNextPage || isFetching}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
           )}
         </Card>
       </motion.div>

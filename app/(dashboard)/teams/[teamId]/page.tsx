@@ -1066,12 +1066,14 @@ function LeadsTab({
     );
   }
 
-  // Debounce search input
-  useEffect(() => {
+  function handleSearchChange(val: string) {
+    setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 400);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search]);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(val);
+      setPage(1);
+    }, 400);
+  }
 
   // Clear selection when filters change
   useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, statusFilter, assigneeFilter, reporterFilter, dateFrom, dateTo, unassignedOnly]);
@@ -1186,11 +1188,11 @@ function LeadsTab({
                 placeholder="Search by name, email, phone…"
                 className="pl-9"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
               {search && (
                 <button
-                  onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }}
+                  onClick={() => { if (debounceRef.current) clearTimeout(debounceRef.current); setSearch(""); setDebouncedSearch(""); setPage(1); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />

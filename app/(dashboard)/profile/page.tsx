@@ -9,6 +9,7 @@ import {
   TrendingUp, Search, Mail, Phone, Shield, Calendar,
   Activity, StickyNote, ExternalLink, PhoneMissed,
   BookMarked, Sparkles, Star, Filter, X as XIcon,
+  LayoutGrid, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import { LeadsDateFilter, TodayLeadsButton } from "@/components/leads/LeadsDateF
 import { useAuthStore } from "@/lib/store/authStore";
 import type { LeadStatus } from "@/types/lead";
 import Link from "next/link";
+import { KanbanBoard } from "@/components/leads/KanbanBoard";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -89,6 +91,7 @@ export default function ProfilePage() {
   const [dateFrom,     setDateFrom]     = useState("");
   const [dateTo,       setDateTo]       = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
 
   function todayISO() { return new Date().toISOString().slice(0, 10); }
   const isTodayActive = dateFrom === todayISO() && dateTo === todayISO();
@@ -332,6 +335,22 @@ export default function ProfilePage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="flex items-center rounded-md border border-border overflow-hidden">
+                  <Button
+                    variant="ghost" size="icon"
+                    className={`h-8 w-8 rounded-none ${viewMode === "table" ? "bg-muted" : ""}`}
+                    onClick={() => setViewMode("table")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon"
+                    className={`h-8 w-8 rounded-none ${viewMode === "kanban" ? "bg-muted" : ""}`}
+                    onClick={() => setViewMode("kanban")}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -365,7 +384,11 @@ export default function ProfilePage() {
           </CardHeader>
 
           <CardContent className="p-0">
-            {leadsLoading ? (
+            {viewMode === "kanban" ? (
+              <div className="p-4">
+                <KanbanBoard filters={{ assignedTo: userId }} canEdit={false} />
+              </div>
+            ) : leadsLoading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
@@ -447,7 +470,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {pagination && pagination.totalPages >= 1 && (
+            {viewMode !== "kanban" && pagination && pagination.totalPages >= 1 && (
               <div className="flex items-center justify-between border-t border-border px-6 py-4 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-muted-foreground">
