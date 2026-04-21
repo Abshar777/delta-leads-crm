@@ -547,6 +547,59 @@ function LeadsPageContent() {
                         </Select>
                       </div>
                     )}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        Last Follow-up Date
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="date"
+                          value={followupFrom}
+                          max={followupTo || undefined}
+                          onChange={(e) => { setFollowupFrom(e.target.value); setPage(1); }}
+                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">to</span>
+                        <Input
+                          type="date"
+                          value={followupTo}
+                          min={followupFrom || undefined}
+                          onChange={(e) => { setFollowupTo(e.target.value); setPage(1); }}
+                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Demo Scheduled */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Demo Scheduled</p>
+                      <Select value={demoScheduled} onValueChange={(v) => applyFilter(setDemoScheduled, v)}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Demo Attended */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Demo Attended</p>
+                      <Select value={demoAttended} onValueChange={(v) => applyFilter(setDemoAttended, v)}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Any</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     {/* Team — only visible to super admins */}
                     {isSuperAdmin && (teamsData?.data?.length ?? 0) > 0 && (
@@ -617,59 +670,7 @@ function LeadsPageContent() {
                     </div>
 
                     {/* Last Follow-up Date Range */}
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        Last Follow-up Date
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          type="date"
-                          value={followupFrom}
-                          max={followupTo || undefined}
-                          onChange={(e) => { setFollowupFrom(e.target.value); setPage(1); }}
-                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
-                        />
-                        <span className="text-xs text-muted-foreground shrink-0">to</span>
-                        <Input
-                          type="date"
-                          value={followupTo}
-                          min={followupFrom || undefined}
-                          onChange={(e) => { setFollowupTo(e.target.value); setPage(1); }}
-                          className="h-9 text-sm px-2 flex-1 [color-scheme:dark]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Demo Scheduled */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Demo Scheduled</p>
-                      <Select value={demoScheduled} onValueChange={(v) => applyFilter(setDemoScheduled, v)}>
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any</SelectItem>
-                          <SelectItem value="true">Yes</SelectItem>
-                          <SelectItem value="false">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Demo Attended */}
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Demo Attended</p>
-                      <Select value={demoAttended} onValueChange={(v) => applyFilter(setDemoAttended, v)}>
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue placeholder="Any" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Any</SelectItem>
-                          <SelectItem value="true">Yes</SelectItem>
-                          <SelectItem value="false">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    
                   </div>
                 </motion.div>
               )}
