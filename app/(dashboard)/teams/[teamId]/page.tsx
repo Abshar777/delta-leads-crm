@@ -132,6 +132,7 @@ import { cn, formatDate, getInitials } from "@/lib/utils";
 import { TeamDialog } from "@/components/teams/TeamDialog";
 import TeamRemindersTab from "@/components/teams/TeamRemindersTab";
 import { TeamMemberKanban } from "@/components/teams/TeamMemberKanban";
+import { TeamSettingsTab } from "@/components/teams/TeamSettingsTab";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import type { Team, TeamMemberStat, TeamUpdateItem, TeamMessageItem, TeamActivityItem } from "@/types/team";
@@ -192,7 +193,7 @@ interface TeamLog {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-type TabId = "dashboard" | "members" | "leads" | "kanban" | "logs" | "updates" | "revenue" | "reminders";
+type TabId = "dashboard" | "members" | "leads" | "kanban" | "logs" | "updates" | "revenue" | "reminders" | "settings";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "dashboard",  label: "Dashboard"  },
@@ -203,6 +204,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "revenue",    label: "Revenue"    },
   { id: "updates",    label: "Updates"    },
   { id: "logs",       label: "Logs"       },
+  { id: "settings",   label: "Settings"   },
 ];
 
 const STATUS_CONFIG: Record<
@@ -3118,7 +3120,7 @@ function TeamDetailPageContent() {
   const { user, hasPermission } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const t = searchParams.get("tab") as TabId | null;
-    const valid: TabId[] = ["dashboard", "members", "leads", "kanban", "logs", "updates", "revenue", "reminders"];
+    const valid: TabId[] = ["dashboard", "members", "leads", "kanban", "logs", "updates", "revenue", "reminders", "settings"];
     return t && valid.includes(t) ? t : "dashboard";
   });
 
@@ -3176,9 +3178,11 @@ function TeamDetailPageContent() {
 
 
   // "updates" is always visible to team members; "leads"/"logs"/"revenue"/"reminders" only for leaders/admins
-  const visibleTabs = TABS.filter(
-    (tab) => (tab.id !== "leads" && tab.id !== "logs" && tab.id !== "revenue" && tab.id !== "reminders" && tab.id !== "kanban") || canSeeSensitiveTabs,
-  );
+  const visibleTabs = TABS.filter((tab) => {
+    if (tab.id === "leads" || tab.id === "logs" || tab.id === "revenue" || tab.id === "reminders" || tab.id === "kanban") return canSeeSensitiveTabs;
+    if (tab.id === "settings") return !!isLeaderOrAdmin;
+    return true;
+  });
 
   function handleAutoAssign() {
     autoAssign(undefined);
@@ -3546,6 +3550,22 @@ function TeamDetailPageContent() {
               transition={{ duration: 0.2 }}
             >
               <LogsTab teamId={teamId} />
+            </motion.div>
+          )}
+
+          {activeTab === "settings" && !!isLeaderOrAdmin && (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <TeamSettingsTab
+                teamId={teamId}
+                team={team}
+                isLeaderOrAdmin={!!isLeaderOrAdmin}
+              />
             </motion.div>
           )}
         </AnimatePresence>
