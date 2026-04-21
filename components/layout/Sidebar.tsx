@@ -44,7 +44,6 @@ export const navItems = [
   { href: "/teams", label: "Teams", icon: UsersRound, permModule: "teams" },
   { href: "/courses", label: "Courses", icon: BookOpen, permModule: "courses" },
   { href: "/reports", label: "Reports", icon: BarChart2, permModule: "reports" },
-  { href: "/reports/sources", label: "Source Analytics", icon: TrendingUp, permModule: "reports" },
   { href: "/users", label: "Users", icon: Users, permModule: "users" },
   { href: "/roles", label: "Roles & Permissions", icon: Shield, permModule: "roles" },
 ];

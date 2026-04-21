@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, IndianRupee, Trophy, ChevronDown, ChevronUp,
-  Loader2,
+  Loader2, Tag, X, ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,10 +35,15 @@ import {
   useRevenueOverview,
   useRevenueTimeline,
   useRevenueTeams,
+  useSourceAnalytics,
+  useCampaignBreakdown,
 } from "@/hooks/useReports";
+import { useTeams } from "@/hooks/useTeams";
+import { useAuthStore } from "@/lib/store/authStore";
 import type {
   TimelinePeriod, LeadStatus, SplitPeriod,
   RevenuePeriod, RevenueTeamDetail, RevenueMemberItem,
+  SourceAnalyticsItem, CampaignBreakdownItem,
 } from "@/types/reports";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -74,6 +79,11 @@ const SOURCE_COLORS: Record<string, string> = {
   direct:   "#f97316",
   other:    "#64748b",
 };
+
+const BAR_COLORS = [
+  "#6366f1","#8b5cf6","#ec4899","#f59e0b",
+  "#10b981","#3b82f6","#ef4444","#14b8a6",
+];
 
 /** Palette for team bars in the split chart (cycles if more than 12 teams) */
 const TEAM_PALETTE = [
@@ -239,6 +249,11 @@ function fmtINR(n: number): string {
 /** Full Indian locale format: ₹1,23,45,678 */
 function fullINR(n: number): string {
   return `₹${n.toLocaleString("en-IN")}`;
+}
+
+/** Plain Indian number format: 1,23,456 */
+function fmt(n: number): string {
+  return new Intl.NumberFormat("en-IN").format(n);
 }
 
 // ── Revenue chart tooltip ─────────────────────────────────────────────────────
@@ -1420,20 +1435,318 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TAB 4: Source Analytics
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CampaignPanel({
+  source, dateFrom, dateTo, onClose,
+}: {
+  source: string; dateFrom: string; dateTo: string; onClose: () => void;
+}) {
+  const { data = [], isLoading } = useCampaignBreakdown(source, dateFrom, dateTo);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.18 }}
+    >
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Tag className="h-3.5 w-3.5 text-primary" />
+            <CardTitle className="text-xs font-semibold capitalize">
+              Campaigns — {source}
+            </CardTitle>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+            <X className="h-3 w-3" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : data.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              No campaigns found for this source.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-2 text-left">Campaign</th>
+                    <th className="px-4 py-2 text-right">Total</th>
+                    <th className="px-4 py-2 text-right">Closed</th>
+                    <th className="px-4 py-2 text-right">Booking</th>
+                    <th className="px-4 py-2 text-right">Conversion</th>
+                    <th className="px-4 py-2 text-right">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {(data as CampaignBreakdownItem[]).map((c, i) => (
+                    <motion.tr
+                      key={c.campaignId}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="hover:bg-muted/20"
+                    >
+                      <td className="px-4 py-2 font-mono text-[11px] font-medium max-w-[200px] truncate">{c.campaignId}</td>
+                      <td className="px-4 py-2 text-right font-semibold tabular-nums">{fmt(c.total)}</td>
+                      <td className="px-4 py-2 text-right text-green-500 tabular-nums">{fmt(c.closed)}</td>
+                      <td className="px-4 py-2 text-right text-teal-500 tabular-nums">{fmt(c.booking + c.partialbooking)}</td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={cn("font-semibold tabular-nums",
+                          c.conversionRate >= 10 ? "text-green-500" : c.conversionRate >= 5 ? "text-yellow-500" : "text-red-500")}>
+                          {c.conversionRate}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right text-primary font-semibold tabular-nums">{fmtINR(c.revenue)}</td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role?.isSystemRole === true && user?.role?.roleName === "Super Admin";
+
+  const [teamId,        setTeamId]        = useState("all");
+  const [sortKey,       setSortKey]       = useState<keyof SourceAnalyticsItem>("total");
+  const [sortAsc,       setSortAsc]       = useState(false);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const { data = [], isLoading } = useSourceAnalytics(
+    dateFrom, dateTo,
+    teamId !== "all" ? teamId : undefined,
+  );
+
+  const summary = useMemo(() => {
+    if (!data.length) return { totalLeads: 0, bestSource: "—", topConversion: 0, totalRevenue: 0 };
+    const totalLeads   = data.reduce((s, r) => s + r.total, 0);
+    const totalRevenue = data.reduce((s, r) => s + r.revenue, 0);
+    const best         = [...data].sort((a, b) => b.conversionRate - a.conversionRate)[0];
+    return { totalLeads, totalRevenue, bestSource: best?.source ?? "—", topConversion: best?.conversionRate ?? 0 };
+  }, [data]);
+
+  const sorted = useMemo(
+    () => [...data].sort((a, b) => {
+      const av = a[sortKey] as number, bv = b[sortKey] as number;
+      return sortAsc ? av - bv : bv - av;
+    }),
+    [data, sortKey, sortAsc],
+  );
+
+  function toggleSort(key: keyof SourceAnalyticsItem) {
+    if (sortKey === key) setSortAsc((v) => !v);
+    else { setSortKey(key); setSortAsc(false); }
+  }
+
+  function SortIcon({ k }: { k: keyof SourceAnalyticsItem }) {
+    if (sortKey !== k) return null;
+    return sortAsc ? <ChevronUp className="h-3 w-3 inline ml-0.5" /> : <ChevronDown className="h-3 w-3 inline ml-0.5" />;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Team filter — Super Admin only */}
+      {isSuperAdmin && (teamsData?.data?.length ?? 0) > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">Filter by team:</span>
+            <Select value={teamId} onValueChange={(v) => { setTeamId(v); setSelectedSource(null); }}>
+              <SelectTrigger className="h-8 w-44 text-xs border-border/50">
+                <SelectValue placeholder="All Teams" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                {(teamsData?.data ?? []).map((t) => (
+                  <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </motion.div>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <KpiCard title="Total Leads"    value={fmt(summary.totalLeads)}   icon={Layers}    gradient="bg-gradient-to-br from-blue-500 to-blue-600"    delay={0}    />
+            <KpiCard title="Best Source"    value={summary.bestSource}        sub={`${summary.topConversion}% conversion`} icon={Target} gradient="bg-gradient-to-br from-green-500 to-green-600" delay={0.06} />
+            <KpiCard title="Total Revenue"  value={fmtINR(summary.totalRevenue)} icon={IndianRupee} gradient="bg-gradient-to-br from-teal-500 to-teal-600"  delay={0.12} />
+            <KpiCard title="Active Sources" value={String(data.length)}       icon={TrendingUp} gradient="bg-gradient-to-br from-violet-500 to-violet-600" delay={0.18} className="col-span-2 lg:col-span-1" />
+          </div>
+
+          {/* Bar chart */}
+          {data.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <BarChart2 className="h-4 w-4 text-primary" /> Leads by Source
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                      <XAxis dataKey="source" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false}
+                        tickFormatter={(v: string) => v.charAt(0).toUpperCase() + v.slice(1)} />
+                      <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <RechartsTooltip
+                        contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
+                        formatter={((v: unknown) => [fmt(Number(v ?? 0)), "Leads"]) as never}
+                      />
+                      <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                        {data.map((_, i) => <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} fillOpacity={0.85} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Sortable table with campaign drill-down */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" /> Source Breakdown
+                  <span className="text-xs font-normal text-muted-foreground ml-1">— click a row to view campaigns</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {sorted.length === 0 ? (
+                  <Empty text="No leads found for this date range" />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border/50 bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <th className="px-4 py-3 text-left">Source</th>
+                          {(
+                            [
+                              ["total",          "Total"],
+                              ["closed",         "Closed"],
+                              ["booking",        "Booking"],
+                              ["conversionRate", "Conversion"],
+                              ["bookingRate",    "Booking Rate"],
+                              ["revenue",        "Revenue"],
+                            ] as [keyof SourceAnalyticsItem, string][]
+                          ).map(([k, label]) => (
+                            <th key={k}
+                              className="px-4 py-3 text-right cursor-pointer hover:text-foreground transition-colors select-none"
+                              onClick={() => toggleSort(k)}
+                            >
+                              {label}<SortIcon k={k} />
+                            </th>
+                          ))}
+                          <th className="px-4 py-3 text-right">Campaigns</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/30">
+                        <AnimatePresence>
+                          {sorted.map((row, i) => {
+                            const isSelected = selectedSource === row.source;
+                            return (
+                              <>
+                                <motion.tr
+                                  key={row.source}
+                                  initial={{ opacity: 0, x: -8 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: i * 0.03 }}
+                                  onClick={() => setSelectedSource(isSelected ? null : row.source)}
+                                  className={cn("cursor-pointer transition-colors",
+                                    isSelected ? "bg-primary/10" : "hover:bg-muted/30")}
+                                >
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2.5 w-2.5 rounded-full shrink-0"
+                                        style={{ background: BAR_COLORS[i % BAR_COLORS.length] }} />
+                                      <span className="font-semibold capitalize">{row.source}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-bold tabular-nums">{fmt(row.total)}</td>
+                                  <td className="px-4 py-3 text-right text-green-500 tabular-nums">{fmt(row.closed)}</td>
+                                  <td className="px-4 py-3 text-right text-teal-500 tabular-nums">{fmt(row.booking + row.partialbooking)}</td>
+                                  <td className="px-4 py-3 text-right">
+                                    <span className={cn("font-semibold tabular-nums",
+                                      row.conversionRate >= 15 ? "text-green-500" : row.conversionRate >= 5 ? "text-yellow-500" : "text-red-500")}>
+                                      {row.conversionRate}%
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.bookingRate}%</td>
+                                  <td className="px-4 py-3 text-right text-primary font-semibold tabular-nums">{fmtINR(row.revenue)}</td>
+                                  <td className="px-4 py-3 text-right">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setSelectedSource(isSelected ? null : row.source); }}
+                                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/20 transition-colors"
+                                    >
+                                      <ArrowUpRight className="h-3 w-3" /> View
+                                    </button>
+                                  </td>
+                                </motion.tr>
+                                {isSelected && (
+                                  <tr key={`${row.source}-campaigns`}>
+                                    <td colSpan={8} className="px-4 py-3 bg-muted/10">
+                                      <AnimatePresence>
+                                        <CampaignPanel source={row.source} dateFrom={dateFrom} dateTo={dateTo} onClose={() => setSelectedSource(null)} />
+                                      </AnimatePresence>
+                                    </td>
+                                  </tr>
+                                )}
+                              </>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ROOT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "split" | "revenue";
+type Tab = "overview" | "split" | "revenue" | "sources";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Overview",      shortLabel: "Overview", icon: BarChart2    },
   { id: "split",    label: "Lead Splitting", shortLabel: "Leads",    icon: GitFork      },
   { id: "revenue",  label: "Revenue",        shortLabel: "Revenue",  icon: IndianRupee  },
+  { id: "sources",  label: "Sources",        shortLabel: "Sources",  icon: TrendingUp   },
 ];
 
 function ReportsPageContent() {
-  const sp = useSearchParams();
+  const sp     = useSearchParams();
   const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<Tab>(() => (sp.get("tab") as Tab) ?? "overview");
 
   // Shared period state — each tab inherits the same date range
@@ -1441,7 +1754,12 @@ function ReportsPageContent() {
   const [customFrom,  setCustomFrom]  = useState(() => sp.get("from") ?? "");
   const [customTo,    setCustomTo]    = useState(() => sp.get("to") ?? "");
 
-  // Sync filter state → URL
+  const { from: dateFrom, to: dateTo } = useMemo(() => {
+    if (quickPeriod === "custom") return { from: customFrom, to: customTo };
+    return getQuickRange(quickPeriod) as { from: string; to: string };
+  }, [quickPeriod, customFrom, customTo]);
+
+  // ── Sync state → URL ───────────────────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams();
     if (activeTab !== "overview") params.set("tab", activeTab);
@@ -1450,11 +1768,6 @@ function ReportsPageContent() {
     if (customTo) params.set("to", customTo);
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [activeTab, quickPeriod, customFrom, customTo]);
-
-  const { from: dateFrom, to: dateTo } = useMemo(() => {
-    if (quickPeriod === "custom") return { from: customFrom, to: customTo };
-    return getQuickRange(quickPeriod) as { from: string; to: string };
-  }, [quickPeriod, customFrom, customTo]);
 
   // ── Smart-hide header on mobile scroll ─────────────────────────────────────
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -1466,51 +1779,51 @@ function ReportsPageContent() {
     const scrollEl = document.querySelector("main") as HTMLElement | null;
     if (!scrollEl) return;
 
-    function handleScroll() {
-      // Desktop: always visible
-      if (window.innerWidth >= 640) {
-        setHeaderVisible(true);
-        lastScrollY.current = scrollEl!.scrollTop;
-        return;
-      }
+    // function handleScroll() {
+    //   // Desktop: always visible
+    //   if (window.innerWidth >= 640) {
+    //     setHeaderVisible(true);
+    //     lastScrollY.current = scrollEl!.scrollTop;
+    //     return;
+    //   }
 
-      const currentY = scrollEl!.scrollTop;
-      const delta    = currentY - lastScrollY.current;
+    //   const currentY = scrollEl!.scrollTop;
+    //   const delta    = currentY - lastScrollY.current;
 
-      if (Math.abs(delta) < SCROLL_THRESHOLD) return;
+    //   if (Math.abs(delta) < SCROLL_THRESHOLD) return;
 
-      if (delta > 0 && currentY > 60) {
-        // Scrolling DOWN and not near top → hide
-        setHeaderVisible(false);
-      } else {
-        // Scrolling UP or near top → show
-        setHeaderVisible(true);
-      }
+    //   if (delta > 0 && currentY > 60) {
+    //     // Scrolling DOWN and not near top → hide
+    //     setHeaderVisible(false);
+    //   } else {
+    //     // Scrolling UP or near top → show
+    //     setHeaderVisible(true);
+    //   }
 
-      lastScrollY.current = currentY;
-    }
+    //   lastScrollY.current = currentY;
+    // }
 
-    function handleResize() {
-      if (window.innerWidth >= 640) setHeaderVisible(true);
-    }
+    // function handleResize() {
+    //   if (window.innerWidth >= 640) setHeaderVisible(true);
+    // }
 
-    scrollEl.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleResize, { passive: true });
-    return () => {
-      scrollEl.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleResize);
-    };
+    // scrollEl.addEventListener("scroll", handleScroll, { passive: true });
+    // window.addEventListener("resize", handleResize, { passive: true });
+    // return () => {
+    //   scrollEl.removeEventListener("scroll", handleScroll);
+    //   window.removeEventListener("resize", handleResize);
+    // };
   }, []);
 
   return (
-    <div className="min-h-screen bg-background rounded-lg">
+    <div>
       {/* ── Sticky header (auto-hides on mobile scroll-down) ──────────────── */}
       <motion.div
-        className="sticky top-[-1.9rem] z-10 border-b border-border/50 bg-background/80 rounded-lg backdrop-blur-sm"
+        className=" z-10 -mx-6 px-6 border-b border-border/30"
         animate={{ y: headerVisible ? 0 : "-150%" }}
         transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        <div className="px-4 sm:px-6 py-4 space-y-4">
+        <div className="py-4 space-y-4">
           {/* Title row */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -1529,35 +1842,36 @@ function ReportsPageContent() {
             <ExportPdfDialog type="overall" entityName="CRM Overall" />
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 border-b border-transparent -mb-4">
+          {/* Tabs — pill style with spring animation */}
+          <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-fit">
             {TABS.map(({ id, label, shortLabel, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
                 className={cn(
-                  "relative flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium transition-colors rounded-t-lg",
+                  "relative flex items-center gap-2 px-3 sm:px-4 py-1.5 text-sm font-medium transition-colors rounded-lg",
                   activeTab === id
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">{label}</span>
-                <span className="sm:hidden">{shortLabel}</span>
                 {activeTab === id && (
                   <motion.div
-                    layoutId="tab-underline"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                    layoutId="tab-active-pill"
+                    className="absolute inset-0 rounded-lg bg-card border border-border/50 shadow-md"
+                    transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
                   />
                 )}
+                <Icon className="relative z-10 h-4 w-4 shrink-0" />
+                <span className="relative z-10 hidden sm:inline">{label}</span>
+                <span className="relative z-10 sm:hidden">{shortLabel}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* Period selector — shared, sits below tabs */}
-        <div className="px-4 sm:px-6 py-3 border-t border-border/30 bg-background/60">
+        <div className="py-3 border-t border-border/20">
           <PeriodHeader
             quickPeriod={quickPeriod}
             setQuickPeriod={setQuickPeriod}
@@ -1570,37 +1884,23 @@ function ReportsPageContent() {
       </motion.div>
 
       {/* ── Tab content ───────────────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 py-6 max-w-[1600px] mx-auto space-y-6">
+      <div className="py-6 max-w-[1600px] mx-auto space-y-6">
         <AnimatePresence mode="wait">
           {activeTab === "overview" ? (
-            <motion.div
-              key="overview"
-              initial={{ opacity:0, y:10 }}
-              animate={{ opacity:1, y:0 }}
-              exit={{ opacity:0, y:-10 }}
-              transition={{ duration:0.2 }}
-            >
+            <motion.div key="overview" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <OverviewTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : activeTab === "split" ? (
-            <motion.div
-              key="split"
-              initial={{ opacity:0, y:10 }}
-              animate={{ opacity:1, y:0 }}
-              exit={{ opacity:0, y:-10 }}
-              transition={{ duration:0.2 }}
-            >
+            <motion.div key="split" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <LeadSplitTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
-          ) : (
-            <motion.div
-              key="revenue"
-              initial={{ opacity:0, y:10 }}
-              animate={{ opacity:1, y:0 }}
-              exit={{ opacity:0, y:-10 }}
-              transition={{ duration:0.2 }}
-            >
+          ) : activeTab === "revenue" ? (
+            <motion.div key="revenue" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <RevenueTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : (
+            <motion.div key="sources" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <SourceAnalyticsTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           )}
         </AnimatePresence>
