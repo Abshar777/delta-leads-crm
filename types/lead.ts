@@ -82,6 +82,7 @@ export interface Lead {
   payments: Payment[];
   activityLogs: ActivityLog[];
   callNotConnected?: number;
+  callCount?: number;
   lastFollowupDate?: string | null;
   demoScheduled?: boolean;
   demoAttended?: boolean;
