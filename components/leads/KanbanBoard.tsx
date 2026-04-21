@@ -829,8 +829,8 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
   const [noteLead, setNoteLead]             = useState<Lead | null>(null);
 
   const { mutate: updateStatus }    = useUpdateLeadStatus();
-  const { mutate: updateCNC }       = useUpdateCallNotConnected();
-
+  const { mutate: updateCNC,isSuccess }       = useUpdateCallNotConnected();
+  
   const { data, isLoading } = useLeads({ ...filters, page: 1, limit: 500 });
   const allLeads = data?.data ?? [];
 

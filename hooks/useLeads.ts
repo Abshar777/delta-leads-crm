@@ -348,8 +348,12 @@ export const useUpdateCallNotConnected = () => {
       return response.data.data!;
     },
     onSuccess: (_, vars) => {
+      console.log("ajkankankank")
       queryClient.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId] });
+      queryClient.invalidateQueries({ queryKey: LEADS_KEY ,exact:false});
     },
     onError: (error: unknown) => toast.error(errMsg(error, "Failed to update call count")),
+  
+      
   });
 };
