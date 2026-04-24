@@ -30,13 +30,8 @@ export const useLeads = (filters?: LeadFilters) => {
       if (filters?.reporter)   params.reporter   = filters.reporter;
       if (filters?.search)     params.search     = filters.search;
       if (filters?.course)     params.course     = filters.course;
-      if (filters?.campaignId)    params.campaignId    = filters.campaignId;
-      if (filters?.demoScheduled) params.demoScheduled = filters.demoScheduled;
-      if (filters?.demoAttended)  params.demoAttended  = filters.demoAttended;
-      if (filters?.followupFrom)  params.followupFrom  = filters.followupFrom;
-      if (filters?.followupTo)    params.followupTo    = filters.followupTo;
-      if (filters?.dateFrom)      params.dateFrom      = filters.dateFrom;
-      if (filters?.dateTo)        params.dateTo        = filters.dateTo;
+      if (filters?.dateFrom)   params.dateFrom   = filters.dateFrom;
+      if (filters?.dateTo)     params.dateTo     = filters.dateTo;
       const response = await api.get<ApiResponse<Lead[]>>("/leads", { params });
       return { data: response.data.data ?? [], pagination: response.data.pagination };
     },
@@ -166,11 +161,22 @@ export const useDeleteLead = () => {
 export const useUploadLeads = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ file, teamIds }: { file: File; teamIds?: string[] }) => {
+    mutationFn: async ({
+      file,
+      teamIds,
+      memberOverrides,
+    }: {
+      file: File;
+      teamIds?: string[];
+      memberOverrides?: Record<string, string[]>;
+    }) => {
       const formData = new FormData();
       formData.append("file", file);
       if (teamIds !== undefined) {
         formData.append("teamIds", JSON.stringify(teamIds));
+      }
+      if (memberOverrides !== undefined) {
+        formData.append("memberOverrides", JSON.stringify(memberOverrides));
       }
       const response = await api.post<ApiResponse<UploadLeadsResult>>("/leads/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -372,3 +378,4 @@ export const useUpdateCallCount = () => {
     onError: (error: unknown) => toast.error(errMsg(error, "Failed to update call count")),
   });
 };
+
