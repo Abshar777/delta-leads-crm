@@ -3,9 +3,9 @@ import { useState, useMemo, useEffect, useRef, useCallback, Suspense } from "rea
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight,
-  X, Upload, UserCheck, FileText, ChevronDown, ExternalLink,
-  CalendarDays, Filter, CheckSquare, Square, Tags, ArrowRightLeft, AlertTriangle,
-  LayoutGrid, List,
+  X, Upload, FileText, ChevronDown, ExternalLink, AlertTriangle,
+  CalendarDays, Filter, Tags, ArrowRightLeft, CheckSquare, Square,
+  LayoutGrid, List, Columns3, GripVertical,
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   ResponsiveDialog,
@@ -29,66 +30,61 @@ import { LeadDialog } from "@/components/leads/LeadDialog";
 import { DeleteLeadDialog } from "@/components/leads/DeleteLeadDialog";
 import { AssignLeadDialog } from "@/components/leads/AssignLeadDialog";
 import { KanbanBoard } from "@/components/leads/KanbanBoard";
-import { useLeads, useUpdateLeadStatus, useBulkUpdateLeadStatus, useBulkDeleteLeads, useBulkAssignLeadsToTeam } from "@/hooks/useLeads";
+import { useLeads, useUpdateLeadStatus, useBulkUpdateLeadStatus, useBulkDeleteLeads, useBulkAssignLeadsToTeam, useUpdateLead } from "@/hooks/useLeads";
 import { useAllCourses } from "@/hooks/useCourses";
 import { useUsers } from "@/hooks/useUsers";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { formatDate } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { Lead, LeadStatus } from "@/types/lead";
+import type { Lead } from "@/types/lead";
+import type { LeadStatus } from "@/lib/statusConfig";
 import type { User } from "@/types";
+import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
+import { CreateStudentModal } from "@/components/students/CreateStudentModal";
+import { useStudentByLeadId } from "@/hooks/useStudents";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
+
 const STATUS_OPTIONS: { value: LeadStatus | "all"; label: string }[] = [
   { value: "all", label: "All Status" },
-  { value: "new", label: "New" },
-  { value: "assigned", label: "Assigned" },
-  { value: "followup", label: "Follow Up" },
-  { value: "interested", label: "Interested" },
-  { value: "cnc", label: "CNC" },
-  { value: "booking", label: "Booking" },
-  { value: "partialbooking", label: "Partial Booking" },
-  { value: "closed", label: "Closed" },
-  { value: "rejected", label: "Rejected" },
-  { value: "rnr", label: "RNR" },
-  { value: "callback", label: "Call Back" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "student", label: "Student" },
+  ...LEAD_STATUSES.map((s) => ({ value: s as LeadStatus, label: STATUS_META[s].label })),
 ];
 
-const STATUS_COLORS: Record<LeadStatus, string> = {
-  new: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  assigned: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  followup: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  closed: "bg-green-500/15 text-green-400 border-green-500/30",
-  rejected: "bg-red-500/15 text-red-400 border-red-500/30",
-  cnc: "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  booking: "bg-teal-500/15 text-teal-400 border-teal-500/30",
-  partialbooking: "bg-pink-500/15 text-pink-400 border-pink-500/30",
-  interested: "bg-violet-500/15 text-violet-400 border-violet-500/30",
-  rnr: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  callback: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-  whatsapp: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  student: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-};
+const STATUS_COLORS: Record<LeadStatus, string> = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, STATUS_META[s].color]),
+) as Record<LeadStatus, string>;
 
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new: "New",
-  assigned: "Assigned",
-  followup: "Follow Up",
-  closed: "Closed",
-  rejected: "Rejected",
-  cnc: "CNC",
-  booking: "Booking",
-  partialbooking: "Partial Booking",
-  interested: "Interested",
-  rnr: "RNR",
-  callback: "Call Back",
-  whatsapp: "WhatsApp",
-  student: "Student",
-};
+const STATUS_LABELS: Record<LeadStatus, string> = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, STATUS_META[s].label]),
+) as Record<LeadStatus, string>;
+
+// ─── Column definitions ───────────────────────────────────────────────────────
+
+interface ColumnDef { id: string; label: string; defaultVisible: boolean; alwaysVisible?: boolean }
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { id: "name",                 label: "Name",               defaultVisible: true,  alwaysVisible: true  },
+  { id: "contact",              label: "Contact",            defaultVisible: true,  alwaysVisible: true  },
+  { id: "status",               label: "Status",             defaultVisible: true,  alwaysVisible: true  },
+  { id: "source",               label: "Source",             defaultVisible: true  },
+  { id: "course",               label: "Course",             defaultVisible: true  },
+  { id: "team",                 label: "Team",               defaultVisible: true  },
+  { id: "assignedTo",           label: "Assigned To",        defaultVisible: true  },
+  { id: "assignedAt",           label: "Assigned At",        defaultVisible: false },
+  { id: "reporter",             label: "Reporter",           defaultVisible: false },
+  { id: "created",              label: "Created",            defaultVisible: false },
+  { id: "lastFollowup",         label: "Last Followup",      defaultVisible: true  },
+  { id: "demo",                 label: "Demo",               defaultVisible: false },
+  { id: "firstContactTime",     label: "First Contact",      defaultVisible: false },
+  { id: "initialLeadResponse",  label: "Response",           defaultVisible: true  },
+  { id: "primaryConcern",       label: "Concern",            defaultVisible: true  },
+  { id: "followupStrategyType", label: "Strategy",           defaultVisible: true  },
+];
+
+const DEFAULT_VISIBLE = new Set(ALL_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -160,6 +156,273 @@ function LeadsPageContent() {
     return v === "kanban" ? "kanban" : "table";
   });
 
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return DEFAULT_VISIBLE;
+    try {
+      const saved = localStorage.getItem("crm_leads_columns");
+      if (saved) return new Set(JSON.parse(saved) as string[]);
+    } catch { /* ignore */ }
+    return DEFAULT_VISIBLE;
+  });
+
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+    if (typeof window === "undefined") return ALL_COLUMNS.map((c) => c.id);
+    try {
+      const saved = localStorage.getItem("crm_leads_column_order");
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        // Merge: keep saved order, append any new columns not yet in saved
+        const savedSet = new Set(parsed);
+        const all = ALL_COLUMNS.map((c) => c.id);
+        const merged = [...parsed.filter((id) => all.includes(id)), ...all.filter((id) => !savedSet.has(id))];
+        return merged;
+      }
+    } catch { /* ignore */ }
+    return ALL_COLUMNS.map((c) => c.id);
+  });
+
+  // Drag state for column reordering (uses refs to avoid re-renders during drag)
+  const dragColId = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  function onColDragStart(id: string) {
+    dragColId.current = id;
+  }
+
+  function onColDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    if (dragColId.current && dragColId.current !== id) setDragOverId(id);
+  }
+
+  function onColDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    const sourceId = dragColId.current;
+    if (!sourceId || sourceId === targetId) { setDragOverId(null); return; }
+    setColumnOrder((prev) => {
+      const next = [...prev];
+      const from = next.indexOf(sourceId);
+      const to   = next.indexOf(targetId);
+      if (from === -1 || to === -1) return prev;
+      next.splice(from, 1);
+      next.splice(to, 0, sourceId);
+      try { localStorage.setItem("crm_leads_column_order", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+    dragColId.current = null;
+    setDragOverId(null);
+  }
+
+  function onColDragEnd() {
+    dragColId.current = null;
+    setDragOverId(null);
+  }
+
+  function toggleColumn(id: string) {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem("crm_leads_columns", JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+  }
+
+  // Ordered list of columns to render (respects both order and visibility)
+  const orderedColumns = columnOrder
+    .map((id) => ALL_COLUMNS.find((c) => c.id === id))
+    .filter(Boolean) as typeof ALL_COLUMNS;
+
+  const col = (id: string) => visibleColumns.has(id);
+
+  // ── Column header renderer ────────────────────────────────────────────────────
+  function renderColHeader(colId: string) {
+    if (colId === "name")   return <th key="name"   className="px-4 py-3 text-left">Name</th>;
+    if (colId === "status") return <th key="status" className="px-4 py-3 text-left">Status</th>;
+    if (!col(colId)) return null;
+    const labelMap: Record<string, { label: string; cls: string }> = {
+      contact:              { label: "Contact",       cls: "px-4 py-3 text-left" },
+      source:               { label: "Source",        cls: "px-4 py-3 text-left hidden md:table-cell" },
+      course:               { label: "Course",        cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      team:                 { label: "Team",          cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      assignedTo:           { label: "Assigned To",   cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      assignedAt:           { label: "Assigned At",   cls: "px-4 py-3 text-left hidden xl:table-cell" },
+      reporter:             { label: "Reporter",      cls: "px-4 py-3 text-left hidden xl:table-cell" },
+      created:              { label: "Created",       cls: "px-4 py-3 text-left hidden xl:table-cell" },
+      lastFollowup:         { label: "Last Followup", cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      demo:                 { label: "Demo",          cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      firstContactTime:     { label: "First Contact", cls: "px-4 py-3 text-left hidden xl:table-cell" },
+      initialLeadResponse:  { label: "Response",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      primaryConcern:       { label: "Concern",       cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      followupStrategyType: { label: "Strategy",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
+    };
+    const h = labelMap[colId];
+    if (!h) return null;
+    return <th key={colId} className={h.cls}>{h.label}</th>;
+  }
+
+  // ── Column cell renderer ──────────────────────────────────────────────────────
+  function renderColCell(colId: string, lead: Lead) {
+    if (colId === "name") return (
+      <td key="name" className="px-4 py-4">
+        <p className="font-medium text-sm">{lead.name}</p>
+      </td>
+    );
+    if (colId === "status") return (
+      <td key="status" className="px-4 py-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
+            asChild
+          >
+            <button className="flex items-center gap-1 group/status">
+              <StatusBadge status={lead.status} />
+              <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/status:opacity-100 transition-opacity" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
+              <DropdownMenuItem key={s} onClick={() => handleStatusChange(lead, s)} className={lead.status === s ? "font-semibold" : ""}>
+                <StatusBadge status={s} />
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+    );
+    if (!col(colId)) return null;
+    switch (colId) {
+      case "contact": return (
+        <td key="contact" className="px-4 py-4">
+          <div className="space-y-0.5">
+            {lead.email && <p className="text-sm text-muted-foreground">{lead.email}</p>}
+            {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
+            {!lead.email && !lead.phone && <span className="text-sm text-muted-foreground/50">—</span>}
+          </div>
+        </td>
+      );
+      case "source": return (
+        <td key="source" className="px-4 py-4 hidden md:table-cell">
+          <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
+        </td>
+      );
+      case "course": return (
+        <td key="course" className="px-4 py-4 hidden lg:table-cell">
+          {lead.course
+            ? <span className="text-sm text-muted-foreground">{typeof lead.course === "object" ? lead.course.name : lead.course}</span>
+            : <span className="text-sm text-muted-foreground/40">—</span>}
+        </td>
+      );
+      case "team": return (
+        <td key="team" className="px-4 py-4 hidden lg:table-cell">
+          {lead.team
+            ? <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{typeof lead.team === "object" ? lead.team.name : lead.team}</span>
+            : <span className="text-xs text-muted-foreground/50">—</span>}
+        </td>
+      );
+      case "assignedTo": return (
+        <td key="assignedTo" className="px-4 py-4 hidden lg:table-cell">
+          <span className="text-sm text-muted-foreground">{getUserName(lead.assignedTo as User | string | null)}</span>
+        </td>
+      );
+      case "assignedAt": return (
+        <td key="assignedAt" className="px-4 py-4 hidden xl:table-cell">
+          {lead.assignedAt ? (
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">{new Date(lead.assignedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</p>
+              <p className="text-[11px] text-muted-foreground/60">{new Date(lead.assignedAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })} IST</p>
+            </div>
+          ) : <span className="text-xs text-muted-foreground/40">—</span>}
+        </td>
+      );
+      case "reporter": return (
+        <td key="reporter" className="px-4 py-4 hidden xl:table-cell">
+          <span className="text-sm text-muted-foreground">{getUserName(lead.reporter as User | string | null)}</span>
+        </td>
+      );
+      case "created": return (
+        <td key="created" className="px-4 py-4 hidden xl:table-cell">
+          <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
+        </td>
+      );
+      case "lastFollowup": return (
+        <td key="lastFollowup" className="px-4 py-4 hidden lg:table-cell">
+          {lead.lastFollowupDate
+            ? <span className="text-xs text-muted-foreground">{new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</span>
+            : <span className="text-xs text-muted-foreground/40">—</span>}
+        </td>
+      );
+      case "demo": return (
+        <td key="demo" className="px-4 py-4 hidden lg:table-cell">
+          <div className="flex flex-col gap-1">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoScheduled ? "bg-violet-500/10 text-violet-400" : "bg-muted/40 text-muted-foreground/50"}`}>
+              {lead.demoScheduled ? "✓ Scheduled" : "Not scheduled"}
+            </span>
+            {lead.demoScheduled && (
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoAttended ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
+                {lead.demoAttended ? "✓ Attended" : "Not attended"}
+              </span>
+            )}
+          </div>
+        </td>
+      );
+      case "firstContactTime": return (
+        <td key="firstContactTime" className="px-4 py-4 hidden xl:table-cell">
+          {lead.firstContactTime
+            ? <span className="text-xs text-muted-foreground">{new Date(lead.firstContactTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+            : <span className="text-xs text-muted-foreground/40">—</span>}
+        </td>
+      );
+      case "initialLeadResponse": return (
+        <td key="initialLeadResponse" className="px-4 py-4 hidden lg:table-cell">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 group/ilr">
+                {lead.initialLeadResponse ? (() => { const c = INITIAL_RESPONSE_CONFIG.find((x) => x.value === lead.initialLeadResponse); return c ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${c.bg} ${c.color} ${c.border}`}>{c.label}</span> : <span className="text-xs text-muted-foreground/40">—</span>; })() : <span className="text-xs text-muted-foreground/40">—</span>}
+                <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/ilr:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => updateLeadField({ id: lead._id, data: { initialLeadResponse: null } as never })} className="text-xs text-muted-foreground">— Clear —</DropdownMenuItem>
+              {INITIAL_RESPONSE_CONFIG.map((opt) => <DropdownMenuItem key={opt.value} onClick={() => updateLeadField({ id: lead._id, data: { initialLeadResponse: opt.value } as never })} className={`text-xs ${opt.color} ${lead.initialLeadResponse === opt.value ? "font-semibold" : ""}`}>{opt.label}</DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </td>
+      );
+      case "primaryConcern": return (
+        <td key="primaryConcern" className="px-4 py-4 hidden lg:table-cell">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 group/pc">
+                {lead.primaryConcern ? (() => { const c = PRIMARY_CONCERN_CONFIG.find((x) => x.value === lead.primaryConcern); return c ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${c.bg} ${c.color} ${c.border}`}>{c.label}</span> : <span className="text-xs text-muted-foreground/40">—</span>; })() : <span className="text-xs text-muted-foreground/40">—</span>}
+                <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/pc:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => updateLeadField({ id: lead._id, data: { primaryConcern: null } as never })} className="text-xs text-muted-foreground">— Clear —</DropdownMenuItem>
+              {PRIMARY_CONCERN_CONFIG.map((opt) => <DropdownMenuItem key={opt.value} onClick={() => updateLeadField({ id: lead._id, data: { primaryConcern: opt.value } as never })} className={`text-xs ${opt.color} ${lead.primaryConcern === opt.value ? "font-semibold" : ""}`}>{opt.label}</DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </td>
+      );
+      case "followupStrategyType": return (
+        <td key="followupStrategyType" className="px-4 py-4 hidden lg:table-cell">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 group/fst">
+                {lead.followupStrategyType ? (() => { const c = FOLLOWUP_STRATEGY_CONFIG.find((x) => x.value === lead.followupStrategyType); return c ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${c.bg} ${c.color} ${c.border}`}>{c.label}</span> : <span className="text-xs text-muted-foreground/40">—</span>; })() : <span className="text-xs text-muted-foreground/40">—</span>}
+                <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/fst:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => updateLeadField({ id: lead._id, data: { followupStrategyType: null } as never })} className="text-xs text-muted-foreground">— Clear —</DropdownMenuItem>
+              {FOLLOWUP_STRATEGY_CONFIG.map((opt) => <DropdownMenuItem key={opt.value} onClick={() => updateLeadField({ id: lead._id, data: { followupStrategyType: opt.value } as never })} className={`text-xs ${opt.color} ${lead.followupStrategyType === opt.value ? "font-semibold" : ""}`}>{opt.label}</DropdownMenuItem>)}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </td>
+      );
+      default: return null;
+    }
+  }
+
   function changeViewMode(mode: "table" | "kanban") {
     setViewMode(mode);
   }
@@ -205,6 +468,7 @@ function LeadsPageContent() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { mutate: updateStatus } = useUpdateLeadStatus();
+  const { mutate: updateLeadField } = useUpdateLead();
 
   // Clear selection when page/filters change
   useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, demoScheduled, demoAttended, followupFrom, followupTo]);
@@ -336,12 +600,25 @@ function LeadsPageContent() {
     setPage(1);
   }
 
+  // ── Student modal state ───────────────────────────────────────────────────────
+  const [studentModalLead, setStudentModalLead] = useState<Lead | null>(null);
+  const [pendingStatus,    setPendingStatus]    = useState<{ lead: Lead; status: LeadStatus } | null>(null);
+
   // ── Handlers ──────────────────────────────────────────────────────────────────
   const handleCreate = () => { setSelectedLead(null); setDialogOpen(true); };
   const handleEdit = (l: Lead) => { setSelectedLead(l); setDialogOpen(true); };
   const handleDelete = (l: Lead) => { setSelectedLead(l); setDeleteOpen(true); };
   const handleAssign = (l: Lead) => { setSelectedLead(l); setAssignOpen(true); };
-  const handleStatusChange = (l: Lead, s: LeadStatus) => updateStatus({ id: l._id, status: s });
+
+  function handleStatusChange(l: Lead, s: LeadStatus) {
+    if (s === "closed") {
+      // Check for existing student handled inside the modal via hook
+      setPendingStatus({ lead: l, status: s });
+      setStudentModalLead(l);
+    } else {
+      updateStatus({ id: l._id, status: s });
+    }
+  }
 
   // ── Active filter label helpers ───────────────────────────────────────────────
   function userName(id: string) {
@@ -428,6 +705,70 @@ function LeadsPageContent() {
                     </span>
                   )}
                 </Button>
+
+                {/* Column visibility + reorder */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Columns3 className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Columns</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={(e) => e.preventDefault()}>
+                    <div className="px-2 py-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Columns</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">Toggle · Drag to reorder</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="py-1">
+                      {orderedColumns.filter((c) => !c.alwaysVisible).map((c) => (
+                        <div
+                          key={c.id}
+                          draggable
+                          onDragStart={() => onColDragStart(c.id)}
+                          onDragOver={(e) => onColDragOver(e, c.id)}
+                          onDrop={(e) => onColDrop(e, c.id)}
+                          onDragEnd={onColDragEnd}
+                          className={`flex items-center gap-2 px-2 py-1.5 rounded mx-1 cursor-grab active:cursor-grabbing transition-colors select-none ${
+                            dragOverId === c.id
+                              ? "bg-primary/15 border border-primary/40"
+                              : "hover:bg-muted/60"
+                          }`}
+                        >
+                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+                          <span
+                            className="flex-1 text-sm cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); toggleColumn(c.id); }}
+                          >
+                            {c.label}
+                          </span>
+                          <div
+                            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors cursor-pointer ${col(c.id) ? "bg-primary border-primary" : "border-border"}`}
+                            onClick={(e) => { e.stopPropagation(); toggleColumn(c.id); }}
+                          >
+                            {col(c.id) && <svg className="h-2.5 w-2.5 text-primary-foreground" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        const defaultOrder = ALL_COLUMNS.map((c) => c.id);
+                        setColumnOrder(defaultOrder);
+                        setVisibleColumns(new Set(DEFAULT_VISIBLE));
+                        try {
+                          localStorage.setItem("crm_leads_columns", JSON.stringify(Array.from(DEFAULT_VISIBLE)));
+                          localStorage.setItem("crm_leads_column_order", JSON.stringify(defaultOrder));
+                        } catch { /* ignore */ }
+                      }}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Reset to default
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* View mode toggle */}
                 <div className="flex items-center rounded-lg border border-border/60 bg-muted/30 p-0.5 gap-0.5">
@@ -901,18 +1242,7 @@ function LeadsPageContent() {
                               aria-label="Select all"
                             />
                           </th>
-                          <th className="px-4 py-3 text-left">Name</th>
-                          <th className="px-4 py-3 text-left">Contact</th>
-                          <th className="px-4 py-3 text-left hidden md:table-cell">Source</th>
-                          <th className="px-4 py-3 text-left hidden xl:table-cell">Course</th>
-                          <th className="px-4 py-3 text-left">Status</th>
-                          <th className="px-4 py-3 text-left hidden lg:table-cell">Team</th>
-                          <th className="px-4 py-3 text-left hidden lg:table-cell">Assigned To</th>
-                          <th className="px-4 py-3 text-left hidden xl:table-cell">Assigned At</th>
-                          <th className="px-4 py-3 text-left hidden xl:table-cell">Reporter</th>
-                          <th className="px-4 py-3 text-left hidden xl:table-cell">Created</th>
-                          <th className="px-4 py-3 text-left hidden lg:table-cell">Last Followup</th>
-                          <th className="px-4 py-3 text-left hidden lg:table-cell">Demo</th>
+                          {orderedColumns.map((c) => renderColHeader(c.id))}
                           <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
@@ -935,109 +1265,8 @@ function LeadsPageContent() {
                                   aria-label="Select lead"
                                 />
                               </td>
-                              <td className="px-4 py-4">
-                                <p className="font-medium text-sm">{lead.name}</p>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="space-y-0.5">
-                                  {lead.email && <p className="text-sm text-muted-foreground">{lead.email}</p>}
-                                  {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
-                                  {!lead.email && !lead.phone && <span className="text-sm text-muted-foreground/50">—</span>}
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 hidden md:table-cell">
-                                <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
-                              </td>
-                              <td className="px-4 py-4 hidden xl:table-cell">
-                                {lead.course ? (
-                                  <span className="text-sm text-muted-foreground">
-                                    {typeof lead.course === "object" ? lead.course.name : lead.course}
-                                  </span>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger
-                                    disabled={getUserId(lead.assignedTo as User | string | null) !== user?._id && !isAdmin}
-                                    asChild
-                                  >
-                                    <button className="flex items-center gap-1 group/status">
-                                      <StatusBadge status={lead.status} />
-                                      <ChevronDown className="h-3 w-3 text-muted-foreground opacity-0 group-hover/status:opacity-100 transition-opacity" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start">
-                                    {(Object.keys(STATUS_LABELS) as LeadStatus[]).map((s) => (
-                                      <DropdownMenuItem
-                                        key={s}
-                                        onClick={() => handleStatusChange(lead, s)}
-                                        className={lead.status === s ? "font-semibold" : ""}
-                                      >
-                                        <StatusBadge status={s} />
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                              <td className="px-4 py-4 hidden lg:table-cell">
-                                {lead.team ? (
-                                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                                    {typeof lead.team === "object" ? lead.team.name : lead.team}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/50">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 hidden lg:table-cell">
-                                <span className="text-sm text-muted-foreground">
-                                  {getUserName(lead.assignedTo as User | string | null)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4 hidden xl:table-cell">
-                                {lead.assignedAt ? (
-                                  <div className="space-y-0.5">
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(lead.assignedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground/60">
-                                      {new Date(lead.assignedAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })} IST
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 hidden xl:table-cell">
-                                <span className="text-sm text-muted-foreground">
-                                  {getUserName(lead.reporter as User | string | null)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-4 hidden xl:table-cell">
-                                <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
-                              </td>
-                              <td className="px-4 py-4 hidden lg:table-cell">
-                                {lead.lastFollowupDate ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    {new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground/40">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 hidden lg:table-cell">
-                                <div className="flex flex-col gap-1">
-                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoScheduled ? "bg-violet-500/10 text-violet-400" : "bg-muted/40 text-muted-foreground/50"}`}>
-                                    {lead.demoScheduled ? "✓ Scheduled" : "Not scheduled"}
-                                  </span>
-                                  {lead.demoScheduled && (
-                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium w-fit ${lead.demoAttended ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
-                                      {lead.demoAttended ? "✓ Attended" : "Not attended"}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
+                              {orderedColumns.map((c) => renderColCell(c.id, lead))}
+
                               <td className="px-4 py-4">
                                 <div className="flex items-center justify-end gap-1">
                                   <Link href={`/leads/${lead._id}`}>
@@ -1345,7 +1574,49 @@ function LeadsPageContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Create Student Modal ──────────────────────────────────────────────── */}
+      {studentModalLead && (
+        <StudentModalWrapper
+          lead={studentModalLead}
+          pendingStatus={pendingStatus}
+          onClose={() => { setStudentModalLead(null); setPendingStatus(null); }}
+          onSettled={() => {
+            if (pendingStatus) updateStatus({ id: pendingStatus.lead._id, status: pendingStatus.status });
+            setStudentModalLead(null);
+            setPendingStatus(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// Separate wrapper so useStudentByLeadId only fires when modal is open
+function StudentModalWrapper({ lead, pendingStatus, onClose, onSettled }: {
+  lead: Lead;
+  pendingStatus: { lead: Lead; status: LeadStatus } | null;
+  onClose: () => void;
+  onSettled: () => void;
+}) {
+  const { data: existingStudent, isLoading } = useStudentByLeadId(lead._id);
+
+  if (isLoading) return null;
+
+  // Already a student — just close status update silently
+  if (existingStudent) {
+    onSettled();
+    return null;
+  }
+
+  return (
+    <CreateStudentModal
+      open
+      lead={lead}
+      onClose={onClose}
+      onSkip={onSettled}
+      onCreated={onSettled}
+    />
   );
 }
 

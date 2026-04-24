@@ -1,17 +1,15 @@
 export type LeadStatus =
   | "new"
   | "assigned"
+  | "pending_response"
   | "followup"
-  | "interested"
-  | "cnc"
-  | "booking"
-  | "partialbooking"
   | "closed"
-  | "rejected"
-  | "rnr"
+  | "lost"
+  | "not_connected"
+  | "mia"
+  | "repeated"
   | "callback"
-  | "whatsapp"
-  | "student";
+  | "cnc";
 
 // ── Overview ──────────────────────────────────────────────────────────────────
 
@@ -46,73 +44,69 @@ export interface OverviewReport {
 export type TimelinePeriod = "daily" | "weekly" | "monthly";
 
 export interface TimelinePoint {
-  label:     string;
-  total:     number;
-  new:       number;
-  assigned:  number;
-  followup:  number;
-  interested:number;
-  cnc:       number;
-  booking:        number;
-  partialbooking: number;
-  closed:         number;
-  rejected:       number;
-  rnr:            number;
-  callback:       number;
-  whatsapp:       number;
-  student:        number;
+  label:            string;
+  total:            number;
+  new:              number;
+  assigned:         number;
+  pending_response: number;
+  followup:         number;
+  closed:           number;
+  lost:             number;
+  not_connected:    number;
+  mia:              number;
+  repeated:         number;
+  callback:         number;
+  cnc:              number;
 }
 
 // ── User Rankings ─────────────────────────────────────────────────────────────
 
 export interface UserRankItem {
-  rank:           number;
-  userId:         string;
-  name:           string;
-  email:          string;
-  designation?:   string;
-  total:          number;
-  new:            number;
-  assigned:       number;
-  followup:       number;
-  interested:     number;
-  cnc:            number;
-  booking:        number;
-  partialbooking: number;
-  closed:         number;
-  rejected:       number;
-  rnr:            number;
-  callback:       number;
-  whatsapp:       number;
-  student:        number;
-  conversionRate: number;
+  rank:             number;
+  userId:           string;
+  name:             string;
+  email:            string;
+  designation?:     string;
+  total:            number;
+  revenue:          number;
+  pendingAmount:    number;
+  new:              number;
+  assigned:         number;
+  pending_response: number;
+  followup:         number;
+  closed:           number;
+  lost:             number;
+  not_connected:    number;
+  mia:              number;
+  repeated:         number;
+  callback:         number;
+  cnc:              number;
+  conversionRate:   number;
 }
 
 // ── Team Rankings ─────────────────────────────────────────────────────────────
 
 export interface TeamRankItem {
-  rank:           number;
-  teamId:         string;
-  name:           string;
-  description?:   string;
-  memberCount:    number;
-  total:          number;
-  totalPayments:  number;
-  new:            number;
-  assigned:       number;
-  followup:       number;
-  interested:     number;
-  cnc:            number;
-  booking:        number;
-  partialbooking: number;
-  closed:         number;
-  rejected:       number;
-  rnr:            number;
-  callback:       number;
-  whatsapp:       number;
-  student:        number;
-  thisMonth:      number;
-  conversionRate: number;
+  rank:             number;
+  teamId:           string;
+  name:             string;
+  description?:     string;
+  memberCount:      number;
+  total:            number;
+  totalPayments:    number;
+  new:              number;
+  assigned:         number;
+  pending_response: number;
+  followup:         number;
+  closed:           number;
+  lost:             number;
+  not_connected:    number;
+  mia:              number;
+  repeated:         number;
+  callback:         number;
+  cnc:              number;
+  thisMonth:        number;
+  conversionRate:   number;
 }
 
 // ── Team Split ────────────────────────────────────────────────────────────────
@@ -127,23 +121,21 @@ export type TeamSplitPoint = {
 };
 
 export interface TeamSplitSummaryItem {
-  rank:           number;
-  teamName:       string;
-  total:          number;
-  new:            number;
-  assigned:       number;
-  followup:       number;
-  interested:     number;
-  cnc:            number;
-  booking:        number;
-  partialbooking: number;
-  closed:         number;
-  rejected:       number;
-  rnr:            number;
-  callback:       number;
-  whatsapp:       number;
-  student:        number;
-  conversionRate: number;
+  rank:             number;
+  teamName:         string;
+  total:            number;
+  new:              number;
+  assigned:         number;
+  pending_response: number;
+  followup:         number;
+  closed:           number;
+  lost:             number;
+  not_connected:    number;
+  mia:              number;
+  repeated:         number;
+  callback:         number;
+  cnc:              number;
+  conversionRate:   number;
 }
 
 export interface TeamSplitReport {
@@ -176,6 +168,7 @@ export interface RevenueAgentItem {
 
 export interface RevenueOverview {
   totalRevenue:       number;
+  totalPending:       number;
   payingLeadCount:    number;
   paymentCount:       number;
   avgRevenuePerLead:  number;
@@ -201,19 +194,21 @@ export interface RevenueMemberItem {
   name:          string;
   designation?:  string;
   revenue:       number;
+  pendingAmount: number;
   paymentCount:  number;
   leadCount:     number;
   pct:           number;
 }
 
 export interface RevenueTeamDetail {
-  rank:         number;
-  teamId:       string;
-  name:         string;
-  revenue:      number;
-  paymentCount: number;
-  leadCount:    number;
-  members:      RevenueMemberItem[];
+  rank:          number;
+  teamId:        string;
+  name:          string;
+  revenue:       number;
+  pendingAmount: number;
+  paymentCount:  number;
+  leadCount:     number;
+  members:       RevenueMemberItem[];
 }
 
 // ── Team-scoped revenue ───────────────────────────────────────────────────────
@@ -224,6 +219,7 @@ export interface TeamRevenueMember {
   name:          string;
   designation?:  string;
   revenue:       number;
+  pendingAmount: number;
   paymentCount:  number;
   leadCount:     number;
   pct:           number;
@@ -231,6 +227,7 @@ export interface TeamRevenueMember {
 
 export interface TeamRevenueOverview {
   totalRevenue:       number;
+  totalPending:       number;
   payingLeadCount:    number;
   paymentCount:       number;
   avgRevenuePerLead:  number;
@@ -255,22 +252,20 @@ export interface SourceAnalyticsItem {
   source:         string;
   total:          number;
   closed:         number;
-  booking:        number;
-  partialbooking: number;
+  lost:           number;
   revenue:        number;
   conversionRate: number;
-  bookingRate:    number;
+  lostRate:       number;
 }
 
 export interface CampaignBreakdownItem {
   campaignId:     string;
   total:          number;
   closed:         number;
-  booking:        number;
-  partialbooking: number;
+  lost:           number;
   revenue:        number;
   conversionRate: number;
-  bookingRate:    number;
+  lostRate:       number;
 }
 
 // ── Filter state ──────────────────────────────────────────────────────────────

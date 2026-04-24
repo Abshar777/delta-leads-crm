@@ -23,27 +23,16 @@ import { formatDate, getInitials } from "@/lib/utils";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { LeadsDateFilter, TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
 import { useAuthStore } from "@/lib/store/authStore";
-import type { LeadStatus } from "@/types/lead";
+import type { LeadStatus } from "@/lib/statusConfig";
+import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
 import Link from "next/link";
 import { KanbanBoard } from "@/components/leads/KanbanBoard";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; dot: string }> = {
-  new:            { label: "New",             color: "bg-blue-500/15 text-blue-400 border-blue-500/30",          dot: "bg-blue-400"    },
-  assigned:       { label: "Assigned",        color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",    dot: "bg-yellow-400"  },
-  followup:       { label: "Follow Up",       color: "bg-orange-500/15 text-orange-400 border-orange-500/30",    dot: "bg-orange-400"  },
-  closed:         { label: "Closed",          color: "bg-green-500/15 text-green-400 border-green-500/30",       dot: "bg-green-400"   },
-  rejected:       { label: "Rejected",        color: "bg-red-500/15 text-red-400 border-red-500/30",             dot: "bg-red-400"     },
-  cnc:            { label: "CNC",             color: "bg-slate-500/15 text-slate-400 border-slate-500/30",       dot: "bg-slate-400"   },
-  booking:        { label: "Booking",         color: "bg-teal-500/15 text-teal-400 border-teal-500/30",          dot: "bg-teal-400"    },
-  partialbooking: { label: "Partial Booking", color: "bg-pink-500/15 text-pink-400 border-pink-500/30",          dot: "bg-pink-400"    },
-  interested:     { label: "Interested",      color: "bg-violet-500/15 text-violet-400 border-violet-500/30",    dot: "bg-violet-400"  },
-  rnr:            { label: "RNR",             color: "bg-amber-500/15 text-amber-400 border-amber-500/30",       dot: "bg-amber-400"   },
-  callback:       { label: "Call Back",       color: "bg-sky-500/15 text-sky-400 border-sky-500/30",             dot: "bg-sky-400"     },
-  whatsapp:       { label: "WhatsApp",        color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
-  student:        { label: "Student",         color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",    dot: "bg-indigo-400"  },
-};
+const STATUS_CONFIG = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, { label: STATUS_META[s].label, color: STATUS_META[s].color, dot: STATUS_META[s].dot }]),
+) as Record<LeadStatus, { label: string; color: string; dot: string }>;
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -148,16 +137,16 @@ export default function ProfilePage() {
     title: string; value: number; icon: React.ElementType;
     color: string; bg: string; border: string; activeRing: string; filterKey: string;
   }[] = [
-    { title: "Total",     value: stats?.total      ?? 0, icon: FileText,    color: "text-primary",    bg: "bg-primary/10",    border: "border-primary/20",    activeRing: "ring-primary/40",    filterKey: "all"        },
-    { title: "New",       value: stats?.new        ?? 0, icon: Star,        color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   activeRing: "ring-blue-400/40",   filterKey: "new"        },
-    { title: "Assigned",  value: stats?.assigned   ?? 0, icon: Users,       color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20", activeRing: "ring-yellow-400/40", filterKey: "assigned"   },
-    { title: "Follow Up", value: stats?.followup   ?? 0, icon: Clock,       color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", activeRing: "ring-orange-400/40", filterKey: "followup"   },
-    { title: "Interested",value: stats?.interested ?? 0, icon: Sparkles,    color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", activeRing: "ring-violet-400/40", filterKey: "interested" },
-    { title: "Booking",   value: stats?.booking    ?? 0, icon: BookMarked,  color: "text-teal-400",   bg: "bg-teal-500/10",   border: "border-teal-500/20",   activeRing: "ring-teal-400/40",   filterKey: "booking"    },
-    { title: "Partial Booking", value: stats?.partialbooking ?? 0, icon: BookMarked, color: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20", activeRing: "ring-pink-400/40", filterKey: "partialbooking" },
-    { title: "CNC",       value: stats?.cnc        ?? 0, icon: PhoneMissed, color: "text-slate-400",  bg: "bg-slate-500/10",  border: "border-slate-500/20",  activeRing: "ring-slate-400/40",  filterKey: "cnc"        },
-    { title: "Closed",    value: stats?.closed     ?? 0, icon: CheckCircle2,color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/20",  activeRing: "ring-green-400/40",  filterKey: "closed"     },
-    { title: "Rejected",  value: stats?.rejected   ?? 0, icon: XCircle,     color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/20",    activeRing: "ring-red-400/40",    filterKey: "rejected"   },
+    { title: "Total",            value: stats?.total            ?? 0, icon: FileText,    color: "text-primary",    bg: "bg-primary/10",    border: "border-primary/20",    activeRing: "ring-primary/40",    filterKey: "all"              },
+    { title: "New",              value: stats?.new              ?? 0, icon: Star,        color: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/20",   activeRing: "ring-blue-400/40",   filterKey: "new"              },
+    { title: "Assigned",         value: stats?.assigned         ?? 0, icon: Users,       color: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20", activeRing: "ring-yellow-400/40", filterKey: "assigned"         },
+    { title: "Pending Response", value: stats?.pending_response ?? 0, icon: Sparkles,    color: "text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", activeRing: "ring-violet-400/40", filterKey: "pending_response" },
+    { title: "Follow Up",        value: stats?.followup         ?? 0, icon: Clock,       color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", activeRing: "ring-orange-400/40", filterKey: "followup"         },
+    { title: "Closed",           value: stats?.closed           ?? 0, icon: CheckCircle2,color: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/20",  activeRing: "ring-green-400/40",  filterKey: "closed"           },
+    { title: "Lost",             value: stats?.lost             ?? 0, icon: XCircle,     color: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/20",    activeRing: "ring-red-400/40",    filterKey: "lost"             },
+    { title: "Not Connected",    value: stats?.not_connected    ?? 0, icon: PhoneMissed, color: "text-slate-400",  bg: "bg-slate-500/10",  border: "border-slate-500/20",  activeRing: "ring-slate-400/40",  filterKey: "not_connected"    },
+    { title: "MIA",              value: stats?.mia              ?? 0, icon: XCircle,     color: "text-rose-400",   bg: "bg-rose-500/10",   border: "border-rose-500/20",   activeRing: "ring-rose-400/40",   filterKey: "mia"              },
+    { title: "CNC",              value: stats?.cnc              ?? 0, icon: PhoneMissed, color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/20",  activeRing: "ring-amber-400/40",  filterKey: "cnc"              },
   ];
 
   const completionRate = stats && stats.total > 0

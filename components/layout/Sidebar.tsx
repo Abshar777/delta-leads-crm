@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
@@ -17,6 +18,8 @@ import {
   TrendingUp,
   X,
   Bell,
+  Settings,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/store/uiStore";
@@ -31,21 +34,23 @@ import {
   DrawerContent,
 } from "@/components/ui/drawer";
 import { useAuthStore } from "@/lib/store/authStore";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useUserLeadStats } from "@/hooks/useLeads";
 import { useMyReminderCount } from "@/hooks/useReminders";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSocket } from "@/lib/socket";
 
-export const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permModule: "dashboard" },
-  { href: "/leads", label: "Leads", icon: FileText, permModule: "leads" },
-  { href: "/reminders", label: "Reminders", icon: Bell, permModule: "reminders" },
-  { href: "/teams", label: "Teams", icon: UsersRound, permModule: "teams" },
-  { href: "/courses", label: "Courses", icon: BookOpen, permModule: "courses" },
-  { href: "/reports", label: "Reports", icon: BarChart2, permModule: "reports" },
-  { href: "/users", label: "Users", icon: Users, permModule: "users" },
-  { href: "/roles", label: "Roles & Permissions", icon: Shield, permModule: "roles" },
+export const navItems: { href: string; label: string; icon: React.ElementType; permModule: string | null }[] = [
+  { href: "/dashboard", label: "Dashboard",          icon: LayoutDashboard, permModule: "dashboard" },
+  { href: "/leads",     label: "Leads",              icon: FileText,        permModule: "leads"     },
+  { href: "/reminders", label: "Reminders",          icon: Bell,            permModule: "reminders" },
+  { href: "/teams",     label: "Teams",              icon: UsersRound,      permModule: "teams"     },
+  { href: "/courses",   label: "Courses",            icon: BookOpen,        permModule: "courses"   },
+  { href: "/reports",   label: "Reports",            icon: BarChart2,       permModule: "reports"   },
+  { href: "/users",     label: "Users",              icon: Users,           permModule: "users"     },
+  { href: "/students",  label: "Students",           icon: GraduationCap,   permModule: null        },
+  { href: "/roles",     label: "Roles & Permissions",icon: Shield,          permModule: "roles"     },
+  { href: "/settings",  label: "Settings",           icon: Settings,        permModule: null        },
 ];
 
 interface NavLinksProps {
@@ -86,7 +91,7 @@ function NavLinks({ collapsed = false, onNavigate }: NavLinksProps) {
     <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
       {navItems.map(({ href, label, icon: Icon, permModule }) => {
         const isActive = pathname === href || pathname.startsWith(href + "/");
-        const allowed = hasPermission(permModule ?? href.split("/")[1], "view");
+        const allowed = permModule === null ? true : hasPermission(permModule ?? href.split("/")[1], "view");
         const badgeCount = href === "/leads" ? newLeadsCount : href === "/reminders" ? reminderCount : 0;
         const showBadge = badgeCount > 0;
 

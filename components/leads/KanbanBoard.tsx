@@ -33,53 +33,34 @@ import {
 import { useAddPayment } from "@/hooks/usePayments";
 import { useAddReminder } from "@/hooks/useReminders";
 import { getInitials, formatDate } from "@/lib/utils";
-import type { Lead, LeadStatus, LeadFilters, LeadNote } from "@/types/lead";
+import type { Lead, LeadFilters, LeadNote } from "@/types/lead";
+import type { LeadStatus } from "@/lib/statusConfig";
 import type { User } from "@/types";
 import type { Course } from "@/types/course";
 import type { Team } from "@/types/team";
 import LeadDialog from "@/components/leads/LeadDialog";
+import { fmtFull, getCurrencySymbol } from "@/lib/currency";
+import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
+
+import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const KANBAN_STATUSES: LeadStatus[] = [
-  "new", "assigned", "followup", "interested", "cnc",
-  "booking", "partialbooking", "closed", "rejected",
-  "rnr", "callback", "whatsapp", "student",
-];
+const KANBAN_STATUSES: LeadStatus[] = [...LEAD_STATUSES] as LeadStatus[];
 
-const STATUS_LABELS: Record<LeadStatus, string> = {
-  new:            "New",
-  assigned:       "Assigned",
-  followup:       "Follow Up",
-  interested:     "Interested",
-  cnc:            "CNC",
-  booking:        "Booking",
-  partialbooking: "Partial Booking",
-  closed:         "Closed",
-  rejected:       "Rejected",
-  rnr:            "RNR",
-  callback:       "Call Back",
-  whatsapp:       "WhatsApp",
-  student:        "Student",
-};
+const STATUS_LABELS = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, STATUS_META[s].label]),
+) as Record<LeadStatus, string>;
 
-const STATUS_STYLE: Record<LeadStatus, {
-  header: string; border: string; dot: string; dropZone: string; badge: string;
-}> = {
-  new:            { header: "bg-blue-500/15 text-blue-400",       border: "border-blue-500/25",    dot: "bg-blue-400",    dropZone: "border-blue-500/50 bg-blue-500/5",    badge: "bg-blue-500/15 text-blue-400 border-blue-500/30"       },
-  assigned:       { header: "bg-yellow-500/15 text-yellow-400",   border: "border-yellow-500/25",  dot: "bg-yellow-400",  dropZone: "border-yellow-500/50 bg-yellow-500/5",  badge: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"   },
-  followup:       { header: "bg-orange-500/15 text-orange-400",   border: "border-orange-500/25",  dot: "bg-orange-400",  dropZone: "border-orange-500/50 bg-orange-500/5",  badge: "bg-orange-500/15 text-orange-400 border-orange-500/30"   },
-  interested:     { header: "bg-violet-500/15 text-violet-400",   border: "border-violet-500/25",  dot: "bg-violet-400",  dropZone: "border-violet-500/50 bg-violet-500/5",  badge: "bg-violet-500/15 text-violet-400 border-violet-500/30"   },
-  cnc:            { header: "bg-slate-500/15 text-slate-400",     border: "border-slate-500/25",   dot: "bg-slate-400",   dropZone: "border-slate-500/50 bg-slate-500/5",   badge: "bg-slate-500/15 text-slate-400 border-slate-500/30"       },
-  booking:        { header: "bg-teal-500/15 text-teal-400",       border: "border-teal-500/25",    dot: "bg-teal-400",    dropZone: "border-teal-500/50 bg-teal-500/5",    badge: "bg-teal-500/15 text-teal-400 border-teal-500/30"         },
-  partialbooking: { header: "bg-pink-500/15 text-pink-400",       border: "border-pink-500/25",    dot: "bg-pink-400",    dropZone: "border-pink-500/50 bg-pink-500/5",    badge: "bg-pink-500/15 text-pink-400 border-pink-500/30"         },
-  closed:         { header: "bg-green-500/15 text-green-400",     border: "border-green-500/25",   dot: "bg-green-400",   dropZone: "border-green-500/50 bg-green-500/5",   badge: "bg-green-500/15 text-green-400 border-green-500/30"       },
-  rejected:       { header: "bg-red-500/15 text-red-400",         border: "border-red-500/25",     dot: "bg-red-400",     dropZone: "border-red-500/50 bg-red-500/5",     badge: "bg-red-500/15 text-red-400 border-red-500/30"           },
-  rnr:            { header: "bg-amber-500/15 text-amber-400",     border: "border-amber-500/25",   dot: "bg-amber-400",   dropZone: "border-amber-500/50 bg-amber-500/5",   badge: "bg-amber-500/15 text-amber-400 border-amber-500/30"       },
-  callback:       { header: "bg-sky-500/15 text-sky-400",         border: "border-sky-500/25",     dot: "bg-sky-400",     dropZone: "border-sky-500/50 bg-sky-500/5",     badge: "bg-sky-500/15 text-sky-400 border-sky-500/30"           },
-  whatsapp:       { header: "bg-emerald-500/15 text-emerald-400", border: "border-emerald-500/25", dot: "bg-emerald-400", dropZone: "border-emerald-500/50 bg-emerald-500/5", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-  student:        { header: "bg-indigo-500/15 text-indigo-400",   border: "border-indigo-500/25",  dot: "bg-indigo-400",  dropZone: "border-indigo-500/50 bg-indigo-500/5",  badge: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"   },
-};
+const STATUS_STYLE = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, {
+    header:   STATUS_META[s].header,
+    border:   STATUS_META[s].border,
+    dot:      STATUS_META[s].dot,
+    dropZone: STATUS_META[s].dropZone,
+    badge:    STATUS_META[s].badge,
+  }]),
+) as Record<LeadStatus, { header: string; border: string; dot: string; dropZone: string; badge: string }>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -130,7 +111,7 @@ function QuickPaymentDialog({ lead, open, onClose }: { lead: Lead; open: boolean
         </ResponsiveDialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 px-4 sm:px-0 pt-1">
           <div className="space-y-1.5">
-            <Label className="text-xs">Amount (₹) *</Label>
+            <Label className="text-xs">Amount ({getCurrencySymbol().trim()}) *</Label>
             <Input type="number" min="1" placeholder="5000" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9" required />
           </div>
           <div className="space-y-1.5">
@@ -504,7 +485,7 @@ function LeadPreviewBody({
         <Row icon={Users}    label="Team"         value={teamObj?.name} />
         <Row icon={BookOpen} label="Course"
           value={courseObj
-            ? `${courseObj.name}${courseObj.amount != null ? ` · ₹${courseObj.amount.toLocaleString("en-IN")}` : ""}`
+            ? `${courseObj.name}${courseObj.amount != null ? ` · ${fmtFull(courseObj.amount)}` : ""}`
             : undefined}
         />
         {lead.lastFollowupDate && (
@@ -531,6 +512,23 @@ function LeadPreviewBody({
             {lead.demoAttended && (
               <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">Demo Attended</span>
             )}
+          </div>
+        )}
+        {/* Lead insight badges */}
+        {(lead.initialLeadResponse || lead.primaryConcern || lead.followupStrategyType) && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {lead.initialLeadResponse && (() => {
+              const cfg = INITIAL_RESPONSE_CONFIG.find((c) => c.value === lead.initialLeadResponse);
+              return cfg ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
+            {lead.primaryConcern && (() => {
+              const cfg = PRIMARY_CONCERN_CONFIG.find((c) => c.value === lead.primaryConcern);
+              return cfg ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
+            {lead.followupStrategyType && (() => {
+              const cfg = FOLLOWUP_STRATEGY_CONFIG.find((c) => c.value === lead.followupStrategyType);
+              return cfg ? <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
           </div>
         )}
         <div className="grid grid-cols-4 gap-2 pt-1">
@@ -691,6 +689,24 @@ function KanbanCard({
             {lead.demoAttended && (
               <span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-[9px] font-medium text-green-400">Attended</span>
             )}
+          </div>
+        )}
+
+        {/* Lead insight chips */}
+        {(lead.initialLeadResponse || lead.primaryConcern || lead.followupStrategyType) && (
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {lead.initialLeadResponse && (() => {
+              const cfg = INITIAL_RESPONSE_CONFIG.find((c) => c.value === lead.initialLeadResponse);
+              return cfg ? <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
+            {lead.primaryConcern && (() => {
+              const cfg = PRIMARY_CONCERN_CONFIG.find((c) => c.value === lead.primaryConcern);
+              return cfg ? <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
+            {lead.followupStrategyType && (() => {
+              const cfg = FOLLOWUP_STRATEGY_CONFIG.find((c) => c.value === lead.followupStrategyType);
+              return cfg ? <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span> : null;
+            })()}
           </div>
         )}
 

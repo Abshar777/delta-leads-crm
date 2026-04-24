@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  IndianRupee, Plus, Pencil, Trash2, Check, X,
-  TrendingUp, CircleDollarSign, Wallet,
+  DollarSign, Plus, Pencil, Trash2, Check, X,
+  TrendingUp, CircleDollarSign, Wallet, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,11 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 import type { Payment } from "@/types/lead";
 import { useAddPayment, useUpdatePayment, useDeletePayment } from "@/hooks/usePayments";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { fmtCurrency, getCurrencySymbol } from "@/lib/currency";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
+const fmt = fmtCurrency;
 
 function toDateInput(iso: string) {
   return iso.slice(0, 10); // YYYY-MM-DD
@@ -62,8 +63,8 @@ function PaymentForm({ initial, onSave, onCancel, saving }: PaymentFormProps) {
       <div className="flex gap-2">
         {/* Amount */}
         <div className="flex-1 space-y-1">
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <IndianRupee className="h-3 w-3" /> Amount (₹)
+          <p className="text-xs text-muted-foreground">
+            Amount ({getCurrencySymbol().trim()})
           </p>
           <Input
             type="number"
@@ -116,6 +117,7 @@ interface PaymentPanelProps {
 }
 
 export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: PaymentPanelProps) {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const [adding,    setAdding]    = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId,  setDeleteId]  = useState<string | null>(null);
@@ -238,7 +240,7 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
             animate={{ opacity: 1 }}
             className="flex flex-col items-center gap-2 py-6 text-center"
           >
-            <IndianRupee className="h-8 w-8 text-muted-foreground/30" />
+            <DollarSign className="h-8 w-8 text-muted-foreground/30" />
             <p className="text-xs text-muted-foreground">No payments recorded yet</p>
             {canEdit && (
               <Button variant="outline" size="sm" className="mt-1 h-7 text-xs" onClick={() => setAdding(true)}>
@@ -295,7 +297,7 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
                           <p className="text-xs text-muted-foreground leading-snug">{p.note}</p>
                         )}
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <IndianRupee className="h-3 w-3" />
+                          <Calendar className="h-3 w-3" />
                           {formatDate(p.paidAt)}
                         </p>
                       </div>

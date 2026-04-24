@@ -8,7 +8,7 @@ import {
   RefreshCw, StickyNote, Send, Pencil, Trash2, CheckCheck,
   X, ChevronDown, Activity, Clock, UserCheck, FilePlus2,
   MessageSquarePlus, PencilLine, Minus, UsersRound, ArrowRightLeft, BookOpen,
-  PhoneOff, Plus,
+  PhoneOff, Plus, MessageSquare, AlertTriangle, Target, TrendingUp,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +36,8 @@ import { useAllCourses } from "@/hooks/useCourses";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { formatDate, getInitials } from "@/lib/utils";
-import type { LeadStatus, LeadNote, ActivityLog, ActivityAction } from "@/types/lead";
+import type { LeadNote, ActivityLog, ActivityAction } from "@/types/lead";
+import type { LeadStatus } from "@/lib/statusConfig";
 import type { Course } from "@/types/course";
 import type { User } from "@/types";
 import type { Team } from "@/types/team";
@@ -44,24 +45,17 @@ import LeadDialog from "@/components/leads/LeadDialog";
 import { ReminderPanel } from "@/components/leads/ReminderPanel";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import { PaymentPanel } from "@/components/leads/PaymentPanel";
+import { fmtFull } from "@/lib/currency";
+import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
+import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
+import { CreateStudentModal } from "@/components/students/CreateStudentModal";
+import { useStudentByLeadId } from "@/hooks/useStudents";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; dot: string }> = {
-  new:            { label: "New",             color: "bg-blue-500/15 text-blue-400 border-blue-500/30",       dot: "bg-blue-400"    },
-  assigned:       { label: "Assigned",        color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30", dot: "bg-yellow-400"  },
-  followup:       { label: "Follow Up",       color: "bg-orange-500/15 text-orange-400 border-orange-500/30", dot: "bg-orange-400"  },
-  closed:         { label: "Closed",          color: "bg-green-500/15 text-green-400 border-green-500/30",    dot: "bg-green-400"   },
-  rejected:       { label: "Rejected",        color: "bg-red-500/15 text-red-400 border-red-500/30",          dot: "bg-red-400"     },
-  cnc:            { label: "CNC",             color: "bg-slate-500/15 text-slate-400 border-slate-500/30",    dot: "bg-slate-400"   },
-  booking:        { label: "Booking",         color: "bg-teal-500/15 text-teal-400 border-teal-500/30",       dot: "bg-teal-400"    },
-  partialbooking: { label: "Partial Booking", color: "bg-pink-500/15 text-pink-400 border-pink-500/30",       dot: "bg-pink-400"    },
-  interested:     { label: "Interested",      color: "bg-violet-500/15 text-violet-400 border-violet-500/30", dot: "bg-violet-400"  },
-  rnr:            { label: "RNR",             color: "bg-amber-500/15 text-amber-400 border-amber-500/30",    dot: "bg-amber-400"   },
-  callback:       { label: "Call Back",       color: "bg-sky-500/15 text-sky-400 border-sky-500/30",          dot: "bg-sky-400"     },
-  whatsapp:       { label: "WhatsApp",        color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
-  student:        { label: "Student",         color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30", dot: "bg-indigo-400"  },
-};
+const STATUS_CONFIG = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, { label: STATUS_META[s].label, color: STATUS_META[s].color, dot: STATUS_META[s].dot }]),
+) as Record<LeadStatus, { label: string; color: string; dot: string }>;
 
 const ACTION_CONFIG: Record<ActivityAction, { icon: React.ElementType; color: string; bg: string }> = {
   lead_created: { icon: FilePlus2, color: "text-blue-400", bg: "bg-blue-500/15" },
@@ -441,6 +435,8 @@ export default function LeadDetailPage() {
 
   const updateStatus = useUpdateLeadStatus();
   const updateLead = useUpdateLead();
+  const { data: existingStudent } = useStudentByLeadId(lead?._id ?? "");
+  const [showStudentModal, setShowStudentModal] = useState(false);
   const assignLead = useAssignLead();
   const assignToTeam = useAssignLeadToTeam();
   const transferToTeam = useTransferLeadToTeam();
@@ -609,11 +605,48 @@ export default function LeadDetailPage() {
                         </p>
                         {typeof lead.course === "object" && (lead.course as Course).amount != null && (
                           <span className="text-xs text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5">
-                            ₹{(lead.course as Course).amount.toLocaleString("en-IN")}
+                            {fmtFull((lead.course as Course).amount)}
                           </span>
                         )}
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {lead.firstContactTime && (
+                  <InfoRow icon={Clock} label="First Contact Time" value={new Date(lead.firstContactTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) + " IST"} />
+                )}
+
+                {/* New lead insight fields */}
+                {(lead.initialLeadResponse || lead.primaryConcern || lead.followupStrategyType) && (
+                  <div className="space-y-2 rounded-xl border border-border/40 bg-muted/10 p-3">
+                    {lead.initialLeadResponse && (() => {
+                      const cfg = INITIAL_RESPONSE_CONFIG.find((c) => c.value === lead.initialLeadResponse);
+                      return cfg ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><MessageSquare className="h-3 w-3" />Response</span>
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {lead.primaryConcern && (() => {
+                      const cfg = PRIMARY_CONCERN_CONFIG.find((c) => c.value === lead.primaryConcern);
+                      return cfg ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><AlertTriangle className="h-3 w-3" />Concern</span>
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    {lead.followupStrategyType && (() => {
+                      const cfg = FOLLOWUP_STRATEGY_CONFIG.find((c) => c.value === lead.followupStrategyType);
+                      return cfg ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Target className="h-3 w-3" />Strategy</span>
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
 
@@ -744,9 +777,14 @@ export default function LeadDetailPage() {
                       <p className="text-xs text-muted-foreground mb-1.5">Change Status</p>
                       <Select
                         value={lead.status}
-                        onValueChange={(val) =>
-                          updateStatus.mutate({ id: lead._id, status: val as LeadStatus })
-                        }
+                        onValueChange={(val) => {
+                          if (val === "closed" && !existingStudent) {
+                            updateStatus.mutate({ id: lead._id, status: "closed" });
+                            setShowStudentModal(true);
+                          } else {
+                            updateStatus.mutate({ id: lead._id, status: val as LeadStatus });
+                          }
+                        }}
                         disabled={updateStatus.isPending}
                       >
                         <SelectTrigger className="h-8 text-xs">
@@ -799,9 +837,137 @@ export default function LeadDetailPage() {
                               <span className="flex items-center justify-between gap-3 w-full">
                                 <span>{c.name}</span>
                                 <span className="text-muted-foreground">
-                                  ₹{c.amount.toLocaleString("en-IN")}
+                                  {fmtFull(c.amount)}
                                 </span>
                               </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* ─── Lead Insight Fields ─────────────────────────────── */}
+                    <div className="pt-1 border-t border-border/30">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60 mb-2">Lead Insights</p>
+                    </div>
+
+                    {/* First Contact Time */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        First Contact Time
+                      </p>
+                      <Input
+                        type="datetime-local"
+                        className="h-8 text-xs [color-scheme:dark]"
+                        defaultValue={lead.firstContactTime
+                          ? new Date(lead.firstContactTime).toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).slice(0, 16).replace(" ", "T")
+                          : ""}
+                        key={lead.firstContactTime ?? "fct-none"}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          const current = lead.firstContactTime
+                            ? new Date(lead.firstContactTime).toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).slice(0, 16).replace(" ", "T")
+                            : "";
+                          if (val !== current) {
+                            const iso = val ? new Date(`${val}:00+05:30`).toISOString() : null;
+                            updateLead.mutate({ id: lead._id, data: { firstContactTime: iso } as never });
+                          }
+                        }}
+                        disabled={updateLead.isPending}
+                      />
+                    </div>
+
+                    {/* Initial Lead Response */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        Initial Lead Response
+                      </p>
+                      <Select
+                        value={lead.initialLeadResponse ?? "__none__"}
+                        onValueChange={(val) =>
+                          updateLead.mutate({ id: lead._id, data: { initialLeadResponse: val === "__none__" ? null : val } as never })
+                        }
+                        disabled={updateLead.isPending}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Not set">
+                            {lead.initialLeadResponse ? (() => {
+                              const cfg = INITIAL_RESPONSE_CONFIG.find((c) => c.value === lead.initialLeadResponse);
+                              return cfg ? <span className={cfg.color}>{cfg.label}</span> : null;
+                            })() : <span className="text-muted-foreground">Not set</span>}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__" className="text-xs text-muted-foreground">— Not set —</SelectItem>
+                          {INITIAL_RESPONSE_CONFIG.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              <span className={opt.color}>{opt.label}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Primary Concern */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Primary Concern
+                      </p>
+                      <Select
+                        value={lead.primaryConcern ?? "__none__"}
+                        onValueChange={(val) =>
+                          updateLead.mutate({ id: lead._id, data: { primaryConcern: val === "__none__" ? null : val } as never })
+                        }
+                        disabled={updateLead.isPending}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Not set">
+                            {lead.primaryConcern ? (() => {
+                              const cfg = PRIMARY_CONCERN_CONFIG.find((c) => c.value === lead.primaryConcern);
+                              return cfg ? <span className={cfg.color}>{cfg.label}</span> : null;
+                            })() : <span className="text-muted-foreground">Not set</span>}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__" className="text-xs text-muted-foreground">— Not set —</SelectItem>
+                          {PRIMARY_CONCERN_CONFIG.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              <span className={opt.color}>{opt.label}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Followup Strategy Type */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Target className="h-3 w-3" />
+                        Followup Strategy
+                      </p>
+                      <Select
+                        value={lead.followupStrategyType ?? "__none__"}
+                        onValueChange={(val) =>
+                          updateLead.mutate({ id: lead._id, data: { followupStrategyType: val === "__none__" ? null : val } as never })
+                        }
+                        disabled={updateLead.isPending}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Not set">
+                            {lead.followupStrategyType ? (() => {
+                              const cfg = FOLLOWUP_STRATEGY_CONFIG.find((c) => c.value === lead.followupStrategyType);
+                              return cfg ? <span className={cfg.color}>{cfg.label}</span> : null;
+                            })() : <span className="text-muted-foreground">Not set</span>}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__" className="text-xs text-muted-foreground">— Not set —</SelectItem>
+                          {FOLLOWUP_STRATEGY_CONFIG.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                              <span className={opt.color}>{opt.label}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1010,6 +1176,17 @@ export default function LeadDetailPage() {
         lead={lead}
         mode="edit"
       />
+
+      {/* Create Student Modal — fires when status → closed and no student yet */}
+      {showStudentModal && !existingStudent && (
+        <CreateStudentModal
+          open
+          lead={lead}
+          onClose={() => setShowStudentModal(false)}
+          onSkip={() => setShowStudentModal(false)}
+          onCreated={() => setShowStudentModal(false)}
+        />
+      )}
     </div>
   );
 }

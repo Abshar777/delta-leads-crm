@@ -17,7 +17,7 @@ import { getSocket } from "@/lib/socket";
 import { useAuthStore } from "@/lib/store/authStore";
 import { usePushNotification } from "@/hooks/usePushNotification";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

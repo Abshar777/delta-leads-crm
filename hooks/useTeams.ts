@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import api from "@/lib/axios";
 import type { ApiResponse, PaginationMeta } from "@/types";
 import type { Lead, LeadFilters } from "@/types/lead";
@@ -386,17 +386,15 @@ export interface TeamMemberDetail {
   stats: {
     total: number;
     assigned: number;
+    pending_response: number;
     followup: number;
     closed: number;
-    rejected: number;
-    cnc: number;
-    booking: number;
-    partialbooking: number;
-    interested: number;
-    rnr: number;
+    lost: number;
+    not_connected: number;
+    mia: number;
+    repeated: number;
     callback: number;
-    whatsapp: number;
-    student: number;
+    cnc: number;
     totalPayments: number;
     closureRate: number;
   };

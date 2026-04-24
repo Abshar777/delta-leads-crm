@@ -11,6 +11,8 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useLeads } from "@/hooks/useLeads";
 import { useReportTeamRankings } from "@/hooks/useReports";
 import { cn } from "@/lib/utils";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { fmtFull } from "@/lib/currency";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,6 +31,7 @@ const MEDAL_COLORS = ["text-yellow-400", "text-slate-400", "text-amber-600"];
 const MEDAL_BG    = ["bg-yellow-400/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 export default function DashboardPage() {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const { user } = useAuthStore();
 
   const { data: allLeadsData }        = useLeads({ page: 1, limit: 1 });
@@ -204,7 +207,7 @@ export default function DashboardPage() {
                             {team.name}
                           </Link>
                           <span className="text-sm font-bold text-emerald-400 tabular-nums shrink-0 ml-2">
-                            ₹{(team.totalPayments ?? 0).toLocaleString("en-IN")}
+                            {fmtFull(team.totalPayments ?? 0)}
                           </span>
                         </div>
                         {/* Revenue progress bar */}

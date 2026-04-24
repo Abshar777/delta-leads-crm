@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
-import { Toaster } from "sonner";
+import { GoeyToaster } from "@/components/ui/goey-toaster";
 import NextTopLoader from "nextjs-toploader";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -65,12 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
           <QueryProvider>
             {children}
-            <Toaster
-              theme="system"
-              position="bottom-right"
-              richColors
-              closeButton
-            />
+            <GoeyToaster  />
           </QueryProvider>
         </ThemeProvider>
       </body>

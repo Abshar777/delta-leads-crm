@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateCourse, useUpdateCourse } from "@/hooks/useCourses";
 import type { Course } from "@/types/course";
+import { getCurrencySymbol } from "@/lib/currency";
 
 const courseSchema = z.object({
   name: z.string().min(1, "Course name is required").max(150),
@@ -121,7 +122,7 @@ export function CourseDialog({ open, onOpenChange, course }: CourseDialogProps) 
           <div className="grid grid-cols-2 gap-4">
             {/* Amount */}
             <div className="space-y-1.5">
-              <Label htmlFor="course-amount">Amount (₹) *</Label>
+              <Label htmlFor="course-amount">Amount ({getCurrencySymbol().trim()}) *</Label>
               <Input
                 id="course-amount"
                 type="number"

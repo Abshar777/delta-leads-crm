@@ -11,7 +11,7 @@ import {
 import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
-  GitFork, IndianRupee, Trophy, ChevronDown, ChevronUp,
+  GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
   Loader2, Tag, X, ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -40,37 +40,27 @@ import {
 } from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { fmtCompact, fmtFull } from "@/lib/currency";
 import type {
   TimelinePeriod, LeadStatus, SplitPeriod,
   RevenuePeriod, RevenueTeamDetail, RevenueMemberItem,
   SourceAnalyticsItem, CampaignBreakdownItem,
 } from "@/types/reports";
+import { LEAD_STATUSES, STATUS_META as S_META } from "@/lib/statusConfig";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const STATUS_META: Record<
-  LeadStatus,
-  { label: string; color: string; bar: string; dot: string }
-> = {
-  new:            { label: "New",             color: "#3b82f6", bar: "bg-blue-500",    dot: "bg-blue-400"    },
-  assigned:       { label: "Assigned",        color: "#eab308", bar: "bg-yellow-500",  dot: "bg-yellow-400"  },
-  followup:       { label: "Follow Up",       color: "#f97316", bar: "bg-orange-500",  dot: "bg-orange-400"  },
-  interested:     { label: "Interested",      color: "#8b5cf6", bar: "bg-violet-500",  dot: "bg-violet-400"  },
-  cnc:            { label: "CNC",             color: "#64748b", bar: "bg-slate-500",   dot: "bg-slate-400"   },
-  booking:        { label: "Booking",         color: "#14b8a6", bar: "bg-teal-500",    dot: "bg-teal-400"    },
-  partialbooking: { label: "Partial Booking", color: "#ec4899", bar: "bg-pink-500",    dot: "bg-pink-400"    },
-  closed:         { label: "Closed",          color: "#22c55e", bar: "bg-green-500",   dot: "bg-green-400"   },
-  rejected:       { label: "Rejected",        color: "#ef4444", bar: "bg-red-500",     dot: "bg-red-400"     },
-  rnr:            { label: "RNR",             color: "#f59e0b", bar: "bg-amber-500",   dot: "bg-amber-400"   },
-  callback:       { label: "Call Back",       color: "#0ea5e9", bar: "bg-sky-500",     dot: "bg-sky-400"     },
-  whatsapp:       { label: "WhatsApp",        color: "#25d366", bar: "bg-emerald-500", dot: "bg-emerald-400" },
-  student:        { label: "Student",         color: "#6366f1", bar: "bg-indigo-500",  dot: "bg-indigo-400"  },
-};
+const STATUS_META = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, {
+    label: S_META[s].label,
+    color: S_META[s].chartColor,
+    bar:   S_META[s].bar,
+    dot:   S_META[s].dot,
+  }]),
+) as Record<LeadStatus, { label: string; color: string; bar: string; dot: string }>;
 
-const ALL_STATUSES: LeadStatus[] = [
-  "new","assigned","followup","interested","cnc","booking","partialbooking","closed","rejected",
-  "rnr","callback","whatsapp","student",
-];
+const ALL_STATUSES: LeadStatus[] = [...LEAD_STATUSES] as LeadStatus[];
 
 const SOURCE_COLORS: Record<string, string> = {
   social:   "#8b5cf6",
@@ -236,24 +226,15 @@ function ChartTooltip({ active, payload, label }: {
   );
 }
 
-// ── Currency helpers ──────────────────────────────────────────────────────────
+// ── Currency helpers (delegates to global currency store) ─────────────────────
+// Components that use these must call useCurrencyStore() to subscribe to changes
 
-/** Compact format: ₹1.2Cr / ₹12.5L / ₹1.5K / ₹500 */
-function fmtINR(n: number): string {
-  if (n >= 1_00_00_000) return `₹${(n / 1_00_00_000).toFixed(1)}Cr`;
-  if (n >= 1_00_000)    return `₹${(n / 1_00_000).toFixed(1)}L`;
-  if (n >= 1_000)       return `₹${(n / 1_000).toFixed(1)}K`;
-  return `₹${n}`;
-}
+const fmtUSD  = fmtCompact;
+const fullUSD = fmtFull;
 
-/** Full Indian locale format: ₹1,23,45,678 */
-function fullINR(n: number): string {
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-/** Plain Indian number format: 1,23,456 */
+/** Plain number format */
 function fmt(n: number): string {
-  return new Intl.NumberFormat("en-IN").format(n);
+  return new Intl.NumberFormat("en-US").format(n);
 }
 
 // ── Revenue chart tooltip ─────────────────────────────────────────────────────
@@ -274,13 +255,13 @@ function RevTooltip({ active, payload, label }: {
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: p.color }} />
             <span className="truncate">{p.name}</span>
           </span>
-          <span className="font-bold text-foreground shrink-0">{fullINR(p.value ?? 0)}</span>
+          <span className="font-bold text-foreground shrink-0">{fullUSD(p.value ?? 0)}</span>
         </div>
       ))}
       {payload.length > 1 && (
         <div className="mt-2 pt-2 border-t border-border/50 flex justify-between">
           <span className="text-muted-foreground">Total</span>
-          <span className="font-bold">{fullINR(total)}</span>
+          <span className="font-bold">{fullUSD(total)}</span>
         </div>
       )}
     </div>
@@ -365,6 +346,7 @@ function PeriodHeader({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const [period, setPeriod]       = useState<TimelinePeriod>("daily");
   const [chartView, setChartView] = useState<"all" | LeadStatus>("all");
 
@@ -393,8 +375,8 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
       ? [
           { key: "total",      label: "Total",     color: "#94a3b8" },
           { key: "closed",     label: "Closed",    color: "#22c55e" },
-          { key: "interested", label: "Interested",color: "#8b5cf6" },
-          { key: "booking",    label: "Booking",   color: "#14b8a6" },
+          { key: "pending_response", label: "Pending",color: "#8b5cf6" },
+          { key: "lost",    label: "Lost",   color: "#ef4444" },
         ]
       : [{ key: chartView, label: STATUS_META[chartView]?.label, color: STATUS_META[chartView]?.color }];
 
@@ -533,13 +515,15 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
                   ? <div className="space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
                   : !userRanks.data?.length ? <Empty />
                   : (
-                    <table className="w-full text-xs min-w-[500px]">
+                    <table className="w-full text-xs min-w-[620px]">
                       <thead>
                         <tr className="border-b border-border/50">
                           <th className="pb-2 text-left font-medium text-muted-foreground w-8">#</th>
                           <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
                           <th className="pb-2 text-right font-medium text-muted-foreground">Total</th>
-                          <th className="pb-2 text-right font-medium text-muted-foreground text-green-500">Closed</th>
+                          <th className="pb-2 text-right font-medium text-green-500">Closed</th>
+                          <th className="pb-2 text-right font-medium text-emerald-500">Revenue</th>
+                          <th className="pb-2 text-right font-medium text-amber-500">Pending</th>
                           <th className="pb-2 text-right font-medium text-muted-foreground">Conv%</th>
                           <th className="pb-2 text-left font-medium text-muted-foreground pl-3 hidden sm:table-cell">Breakdown</th>
                         </tr>
@@ -559,6 +543,14 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
                             </td>
                             <td className="py-2.5 text-right font-semibold tabular-nums">{u.total}</td>
                             <td className="py-2.5 text-right"><span className="font-bold text-green-500 tabular-nums">{u.closed}</span></td>
+                            <td className="py-2.5 text-right">
+                              <span className="font-semibold text-emerald-500 tabular-nums">{fmtUSD(u.revenue ?? 0)}</span>
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <span className={cn("font-semibold tabular-nums", (u.pendingAmount ?? 0) > 0 ? "text-amber-500" : "text-muted-foreground")}>
+                                {fmtUSD(u.pendingAmount ?? 0)}
+                              </span>
+                            </td>
                             <td className="py-2.5 text-right">
                               <span className={cn("font-semibold tabular-nums", u.conversionRate>=50?"text-green-500":u.conversionRate>=25?"text-yellow-500":"text-muted-foreground")}>
                                 {u.conversionRate}%
@@ -613,7 +605,7 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
                             <td className="py-2.5 text-right font-semibold tabular-nums">{t.total}</td>
                             <td className="py-2.5 text-right">
                               <span className="font-bold text-emerald-500 tabular-nums">
-                                ₹{(t.totalPayments ?? 0).toLocaleString("en-IN")}
+                                {fullUSD(t.totalPayments ?? 0)}
                               </span>
                             </td>
                             <td className="py-2.5 text-right">
@@ -723,10 +715,11 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
                       </div>
                       <p className="font-bold text-foreground text-sm truncate">{u.name}</p>
                       {u.designation && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{u.designation}</p>}
-                      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                         <div><p className="text-base font-bold text-foreground tabular-nums">{u.total}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
                         <div><p className="text-base font-bold text-green-500 tabular-nums">{u.closed}</p><p className="text-[10px] text-muted-foreground">Closed</p></div>
-                        <div><p className="text-base font-bold text-violet-500 tabular-nums">{u.conversionRate}%</p><p className="text-[10px] text-muted-foreground">Conv.</p></div>
+                        <div><p className="text-sm font-bold text-emerald-500 tabular-nums">{fmtUSD(u.revenue ?? 0)}</p><p className="text-[10px] text-muted-foreground">Revenue</p></div>
+                        <div><p className={cn("text-sm font-bold tabular-nums", (u.pendingAmount??0)>0?"text-amber-500":"text-muted-foreground")}>{fmtUSD(u.pendingAmount ?? 0)}</p><p className="text-[10px] text-muted-foreground">Pending</p></div>
                       </div>
                       <div className="mt-3"><MiniStatusBars item={u as unknown as Record<string,number>} total={u.total} /></div>
                     </motion.div>
@@ -1021,6 +1014,7 @@ function LeadSplitTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const [revPeriod,    setRevPeriod]    = useState<RevenuePeriod>("monthly");
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
 
@@ -1045,41 +1039,50 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     <div className="space-y-6">
 
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <KpiCard
-          title="Total Revenue"
-          value={overview.isLoading ? "—" : fmtINR(ovData?.totalRevenue ?? 0)}
+          title="Total Received"
+          value={overview.isLoading ? "—" : fmtUSD(ovData?.totalRevenue ?? 0)}
           sub={`${ovData?.paymentCount ?? 0} payments`}
-          icon={IndianRupee}
+          icon={DollarSign}
           gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
           delay={0}
           loading={overview.isLoading}
         />
         <KpiCard
-          title="Top Earning Team"
-          value={overview.isLoading ? "—" : fmtINR(ovData?.topTeam?.revenue ?? 0)}
-          sub={ovData?.topTeam?.name ?? "No data"}
-          icon={Trophy}
-          gradient="bg-gradient-to-br from-yellow-500 to-yellow-600"
+          title="Total Pending"
+          value={overview.isLoading ? "—" : fmtUSD(ovData?.totalPending ?? 0)}
+          sub="outstanding balance"
+          icon={TrendingUp}
+          gradient="bg-gradient-to-br from-amber-500 to-amber-600"
           delay={0.06}
           loading={overview.isLoading}
         />
         <KpiCard
-          title="Top Earning Agent"
-          value={overview.isLoading ? "—" : fmtINR(ovData?.topAgent?.revenue ?? 0)}
-          sub={ovData?.topAgent?.name ?? "No data"}
-          icon={Award}
-          gradient="bg-gradient-to-br from-violet-500 to-violet-600"
+          title="Top Earning Team"
+          value={overview.isLoading ? "—" : fmtUSD(ovData?.topTeam?.revenue ?? 0)}
+          sub={ovData?.topTeam?.name ?? "No data"}
+          icon={Trophy}
+          gradient="bg-gradient-to-br from-yellow-500 to-yellow-600"
           delay={0.12}
           loading={overview.isLoading}
         />
         <KpiCard
-          title="Avg per Lead"
-          value={overview.isLoading ? "—" : fmtINR(ovData?.avgRevenuePerLead ?? 0)}
-          sub={`${ovData?.payingLeadCount ?? 0} paying leads`}
-          icon={TrendingUp}
-          gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+          title="Top Earning Agent"
+          value={overview.isLoading ? "—" : fmtUSD(ovData?.topAgent?.revenue ?? 0)}
+          sub={ovData?.topAgent?.name ?? "No data"}
+          icon={Award}
+          gradient="bg-gradient-to-br from-violet-500 to-violet-600"
           delay={0.18}
+          loading={overview.isLoading}
+        />
+        <KpiCard
+          title="Avg per Lead"
+          value={overview.isLoading ? "—" : fmtUSD(ovData?.avgRevenuePerLead ?? 0)}
+          sub={`${ovData?.payingLeadCount ?? 0} paying leads`}
+          icon={Activity}
+          gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+          delay={0.24}
           loading={overview.isLoading}
           className="col-span-2 lg:col-span-1"
         />
@@ -1139,7 +1142,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                     tick={{ fontSize:10, fill:"hsl(var(--muted-foreground))" }}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v: number) => fmtINR(v)}
+                    tickFormatter={(v: number) => fmtUSD(v)}
                     width={60}
                   />
                   <RechartsTooltip content={<RevTooltip />} />
@@ -1228,7 +1231,12 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className="text-xs font-semibold text-foreground truncate">{team.name}</span>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                                  <span className="text-xs font-bold text-emerald-500 tabular-nums">{fullINR(team.revenue)}</span>
+                                  <span className="text-xs font-bold text-emerald-500 tabular-nums">{fullUSD(team.revenue)}</span>
+                                  {(team.pendingAmount ?? 0) > 0 && (
+                                    <span className="text-[10px] font-medium text-amber-500 tabular-nums">
+                                      {fullUSD(team.pendingAmount ?? 0)} pending
+                                    </span>
+                                  )}
                                   {isExpanded
                                     ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                                     : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1271,8 +1279,13 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center justify-between">
-                                        <span className="font-medium text-foreground truncate max-w-[130px]">{m.name}</span>
-                                        <span className="font-semibold text-emerald-500 tabular-nums shrink-0 ml-2">{fullINR(m.revenue)}</span>
+                                        <span className="font-medium text-foreground truncate max-w-[100px]">{m.name}</span>
+                                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                                          <span className="font-semibold text-emerald-500 tabular-nums">{fullUSD(m.revenue)}</span>
+                                          {(m.pendingAmount ?? 0) > 0 && (
+                                            <span className="text-[10px] text-amber-500 tabular-nums">{fullUSD(m.pendingAmount ?? 0)} due</span>
+                                          )}
+                                        </div>
                                       </div>
                                       {m.designation && (
                                         <p className="text-[10px] text-muted-foreground">{m.designation}</p>
@@ -1353,7 +1366,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                               )}
                             </div>
                             <span className="text-xs font-bold text-emerald-500 tabular-nums shrink-0 ml-2">
-                              {fullINR(a.revenue)}
+                              {fullUSD(a.revenue)}
                             </span>
                           </div>
                           <div className="h-1 rounded-full bg-muted/50 overflow-hidden">
@@ -1413,7 +1426,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
                       )}
                       <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                         <div>
-                          <p className="text-sm font-bold text-emerald-500 tabular-nums">{fmtINR(a.revenue)}</p>
+                          <p className="text-sm font-bold text-emerald-500 tabular-nums">{fmtUSD(a.revenue)}</p>
                           <p className="text-[10px] text-muted-foreground">Revenue</p>
                         </div>
                         <div>
@@ -1497,14 +1510,14 @@ function CampaignPanel({
                       <td className="px-4 py-2 font-mono text-[11px] font-medium max-w-[200px] truncate">{c.campaignId}</td>
                       <td className="px-4 py-2 text-right font-semibold tabular-nums">{fmt(c.total)}</td>
                       <td className="px-4 py-2 text-right text-green-500 tabular-nums">{fmt(c.closed)}</td>
-                      <td className="px-4 py-2 text-right text-teal-500 tabular-nums">{fmt(c.booking + c.partialbooking)}</td>
+                      <td className="px-4 py-2 text-right text-red-500 tabular-nums">{fmt(c.lost ?? 0)}</td>
                       <td className="px-4 py-2 text-right">
                         <span className={cn("font-semibold tabular-nums",
                           c.conversionRate >= 10 ? "text-green-500" : c.conversionRate >= 5 ? "text-yellow-500" : "text-red-500")}>
                           {c.conversionRate}%
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-right text-primary font-semibold tabular-nums">{fmtINR(c.revenue)}</td>
+                      <td className="px-4 py-2 text-right text-primary font-semibold tabular-nums">{fmtUSD(c.revenue)}</td>
                     </motion.tr>
                   ))}
                 </tbody>
@@ -1518,6 +1531,7 @@ function CampaignPanel({
 }
 
 function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role?.isSystemRole === true && user?.role?.roleName === "Super Admin";
 
@@ -1590,7 +1604,7 @@ function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: st
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <KpiCard title="Total Leads"    value={fmt(summary.totalLeads)}   icon={Layers}    gradient="bg-gradient-to-br from-blue-500 to-blue-600"    delay={0}    />
             <KpiCard title="Best Source"    value={summary.bestSource}        sub={`${summary.topConversion}% conversion`} icon={Target} gradient="bg-gradient-to-br from-green-500 to-green-600" delay={0.06} />
-            <KpiCard title="Total Revenue"  value={fmtINR(summary.totalRevenue)} icon={IndianRupee} gradient="bg-gradient-to-br from-teal-500 to-teal-600"  delay={0.12} />
+            <KpiCard title="Total Revenue"  value={fmtUSD(summary.totalRevenue)} icon={DollarSign} gradient="bg-gradient-to-br from-teal-500 to-teal-600"  delay={0.12} />
             <KpiCard title="Active Sources" value={String(data.length)}       icon={TrendingUp} gradient="bg-gradient-to-br from-violet-500 to-violet-600" delay={0.18} className="col-span-2 lg:col-span-1" />
           </div>
 
@@ -1646,9 +1660,9 @@ function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: st
                             [
                               ["total",          "Total"],
                               ["closed",         "Closed"],
-                              ["booking",        "Booking"],
+                              ["lost",           "Lost"],
                               ["conversionRate", "Conversion"],
-                              ["bookingRate",    "Booking Rate"],
+                              ["lostRate",       "Lost Rate"],
                               ["revenue",        "Revenue"],
                             ] as [keyof SourceAnalyticsItem, string][]
                           ).map(([k, label]) => (
@@ -1686,15 +1700,15 @@ function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: st
                                   </td>
                                   <td className="px-4 py-3 text-right font-bold tabular-nums">{fmt(row.total)}</td>
                                   <td className="px-4 py-3 text-right text-green-500 tabular-nums">{fmt(row.closed)}</td>
-                                  <td className="px-4 py-3 text-right text-teal-500 tabular-nums">{fmt(row.booking + row.partialbooking)}</td>
+                                  <td className="px-4 py-3 text-right text-red-500 tabular-nums">{fmt(row.lost ?? 0)}</td>
                                   <td className="px-4 py-3 text-right">
                                     <span className={cn("font-semibold tabular-nums",
                                       row.conversionRate >= 15 ? "text-green-500" : row.conversionRate >= 5 ? "text-yellow-500" : "text-red-500")}>
                                       {row.conversionRate}%
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.bookingRate}%</td>
-                                  <td className="px-4 py-3 text-right text-primary font-semibold tabular-nums">{fmtINR(row.revenue)}</td>
+                                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{(row.lostRate ?? 0)}%</td>
+                                  <td className="px-4 py-3 text-right text-primary font-semibold tabular-nums">{fmtUSD(row.revenue)}</td>
                                   <td className="px-4 py-3 text-right">
                                     <button
                                       onClick={(e) => { e.stopPropagation(); setSelectedSource(isSelected ? null : row.source); }}
@@ -1739,7 +1753,7 @@ type Tab = "overview" | "split" | "revenue" | "sources";
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Overview",      shortLabel: "Overview", icon: BarChart2    },
   { id: "split",    label: "Lead Splitting", shortLabel: "Leads",    icon: GitFork      },
-  { id: "revenue",  label: "Revenue",        shortLabel: "Revenue",  icon: IndianRupee  },
+  { id: "revenue",  label: "Revenue",        shortLabel: "Revenue",  icon: DollarSign   },
   { id: "sources",  label: "Sources",        shortLabel: "Sources",  icon: TrendingUp   },
 ];
 

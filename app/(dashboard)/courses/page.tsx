@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen, Plus, Search, X, Edit2, Trash2,
-  IndianRupee, ChevronLeft, ChevronRight, BookMarked,
+  DollarSign, ChevronLeft, ChevronRight, BookMarked,
   TrendingUp, Package, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,16 +19,12 @@ import { useCourses } from "@/hooks/useCourses";
 import { CourseDialog } from "@/components/courses/CourseDialog";
 import { DeleteCourseDialog } from "@/components/courses/DeleteCourseDialog";
 import type { Course } from "@/types/course";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { fmtCurrency } from "@/lib/currency";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatAmount(amount: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+const formatAmount = fmtCurrency;
 
 // ─── Skeleton Card ─────────────────────────────────────────────────────────────
 
@@ -100,8 +96,7 @@ function CourseCard({ course, onEdit, onDelete, index }: CourseCardProps) {
 
         <CardContent className="pb-3">
           <div className="flex items-center gap-1 text-lg font-bold text-foreground">
-            <IndianRupee className="h-4 w-4 text-muted-foreground shrink-0" />
-            {formatAmount(course.amount).replace("₹", "")}
+            {formatAmount(course.amount)}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">Course fee</p>
         </CardContent>
@@ -143,6 +138,7 @@ function CourseCard({ course, onEdit, onDelete, index }: CourseCardProps) {
 // ─── Main Page Content ────────────────────────────────────────────────────────
 
 function CoursesPageContent() {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const sp     = useSearchParams();
   const router = useRouter();
 
@@ -251,7 +247,7 @@ function CoursesPageContent() {
             {
               label: "Avg. Fee",
               value: formatAmount(avgAmount),
-              icon: IndianRupee,
+              icon: DollarSign,
               color: "text-amber-500",
               bg: "bg-amber-500/10",
             },

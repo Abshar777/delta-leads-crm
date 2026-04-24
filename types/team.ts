@@ -38,17 +38,15 @@ export interface TeamMemberStat {
   user: Pick<User, "_id" | "name" | "email" | "designation">;
   total: number;
   assigned: number;
+  pending_response: number;
   followup: number;
   closed: number;
-  rejected: number;
-  cnc: number;
-  booking: number;
-  partialbooking: number;
-  interested: number;
-  rnr: number;
+  lost: number;
+  not_connected: number;
+  mia: number;
+  repeated: number;
   callback: number;
-  whatsapp: number;
-  student: number;
+  cnc: number;
   totalPayments: number;
 }
 
@@ -62,17 +60,15 @@ export interface TeamMemberRanking {
   isLeader: boolean;
   total: number;
   assigned: number;
+  pending_response: number;
   followup: number;
   closed: number;
-  rejected: number;
-  cnc: number;
-  booking: number;
-  partialbooking: number;
-  interested: number;
-  rnr: number;
+  lost: number;
+  not_connected: number;
+  mia: number;
+  repeated: number;
   callback: number;
-  whatsapp: number;
-  student: number;
+  cnc: number;
   totalPayments: number;
   closureRate: number;
 }
@@ -82,18 +78,16 @@ export interface TeamDashboard {
     total: number;
     new: number;
     assigned: number;
+    pending_response: number;
     followup: number;
     closed: number;
-    rejected: number;
-    unassigned: number;
-    cnc: number;
-    booking: number;
-    partialbooking: number;
-    interested: number;
-    rnr: number;
+    lost: number;
+    not_connected: number;
+    mia: number;
+    repeated: number;
     callback: number;
-    whatsapp: number;
-    student: number;
+    cnc: number;
+    unassigned: number;
   };
   memberRankings: TeamMemberRanking[];
 }

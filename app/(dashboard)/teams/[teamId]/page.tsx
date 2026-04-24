@@ -54,7 +54,7 @@ import {
   ArrowUpDown,
   FileEdit,
   Zap,
-  IndianRupee,
+  DollarSign,
   ChevronDown,
   ChevronUp,
   Award,
@@ -136,8 +136,12 @@ import { TeamSettingsTab } from "@/components/teams/TeamSettingsTab";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import type { Team, TeamMemberStat, TeamUpdateItem, TeamMessageItem, TeamActivityItem } from "@/types/team";
-import type { Lead, LeadStatus } from "@/types/lead";
+import type { Lead } from "@/types/lead";
+import type { LeadStatus } from "@/lib/statusConfig";
+import { LEAD_STATUSES, STATUS_META as SM } from "@/lib/statusConfig";
 import type { User } from "@/types";
+import { useCurrencyStore } from "@/lib/store/currencyStore";
+import { fmtCompact, fmtFull } from "@/lib/currency";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,36 +149,32 @@ interface TeamDashboardData {
   statusDistribution: {
     total: number;
     thisMonth: number;
+    unassigned: number;
     new: number;
     assigned: number;
+    pending_response: number;
     followup: number;
     closed: number;
-    rejected: number;
-    unassigned: number;
-    cnc: number;
-    booking: number;
-    partialbooking: number;
-    interested: number;
-    rnr: number;
+    lost: number;
+    not_connected: number;
+    mia: number;
+    repeated: number;
     callback: number;
-    whatsapp: number;
-    student: number;
+    cnc: number;
   };
   memberRankings: Array<{
     user: Pick<User, "_id" | "name" | "email" | "designation">;
     total: number;
     assigned: number;
+    pending_response: number;
     followup: number;
     closed: number;
-    rejected: number;
-    cnc: number;
-    booking: number;
-    partialbooking: number;
-    interested: number;
-    rnr: number;
+    lost: number;
+    not_connected: number;
+    mia: number;
+    repeated: number;
     callback: number;
-    whatsapp: number;
-    student: number;
+    cnc: number;
     totalPayments: number;
     closureRate: number;
   }>;
@@ -207,24 +207,9 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "settings",   label: "Settings"   },
 ];
 
-const STATUS_CONFIG: Record<
-  LeadStatus,
-  { label: string; color: string; dot: string; bar: string; text: string }
-> = {
-  new:            { label: "New",             color: "bg-blue-500/15 text-blue-400 border-blue-500/30",          dot: "bg-blue-400",    bar: "bg-blue-500",    text: "text-blue-400"    },
-  assigned:       { label: "Assigned",        color: "bg-amber-500/15 text-amber-400 border-amber-500/30",       dot: "bg-amber-400",   bar: "bg-amber-500",   text: "text-amber-400"   },
-  followup:       { label: "Follow Up",       color: "bg-purple-500/15 text-purple-400 border-purple-500/30",    dot: "bg-purple-400",  bar: "bg-purple-500",  text: "text-purple-400"  },
-  closed:         { label: "Closed",          color: "bg-green-500/15 text-green-400 border-green-500/30",       dot: "bg-green-400",   bar: "bg-green-500",   text: "text-green-400"   },
-  rejected:       { label: "Rejected",        color: "bg-red-500/15 text-red-400 border-red-500/30",             dot: "bg-red-400",     bar: "bg-red-500",     text: "text-red-400"     },
-  cnc:            { label: "CNC",             color: "bg-slate-500/15 text-slate-400 border-slate-500/30",       dot: "bg-slate-400",   bar: "bg-slate-500",   text: "text-slate-400"   },
-  booking:        { label: "Booking",         color: "bg-teal-500/15 text-teal-400 border-teal-500/30",          dot: "bg-teal-400",    bar: "bg-teal-500",    text: "text-teal-400"    },
-  partialbooking: { label: "Partial Booking", color: "bg-pink-500/15 text-pink-400 border-pink-500/30",          dot: "bg-pink-400",    bar: "bg-pink-500",    text: "text-pink-400"    },
-  interested:     { label: "Interested",      color: "bg-violet-500/15 text-violet-400 border-violet-500/30",    dot: "bg-violet-400",  bar: "bg-violet-500",  text: "text-violet-400"  },
-  rnr:            { label: "RNR",             color: "bg-amber-500/15 text-amber-400 border-amber-500/30",       dot: "bg-amber-400",   bar: "bg-amber-500",   text: "text-amber-400"   },
-  callback:       { label: "Call Back",       color: "bg-sky-500/15 text-sky-400 border-sky-500/30",             dot: "bg-sky-400",     bar: "bg-sky-500",     text: "text-sky-400"     },
-  whatsapp:       { label: "WhatsApp",        color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400", bar: "bg-emerald-500", text: "text-emerald-400" },
-  student:        { label: "Student",         color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",    dot: "bg-indigo-400",  bar: "bg-indigo-500",  text: "text-indigo-400"  },
-};
+const STATUS_CONFIG = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, { label: SM[s].label, color: SM[s].color, dot: SM[s].dot, bar: SM[s].bar, text: SM[s].text }]),
+) as Record<LeadStatus, { label: string; color: string; dot: string; bar: string; text: string }>;
 
 const LOG_ACTION_CONFIG: Record<
   string,
@@ -320,16 +305,8 @@ const MEMBER_PALETTE = [
   "#8b5cf6","#3b82f6","#ec4899","#84cc16","#06b6d4","#f43f5e",
 ];
 
-function fmtINR(n: number): string {
-  if (n >= 1_00_00_000) return `₹${(n / 1_00_00_000).toFixed(1)}Cr`;
-  if (n >= 1_00_000)    return `₹${(n / 1_00_000).toFixed(1)}L`;
-  if (n >= 1_000)       return `₹${(n / 1_000).toFixed(1)}K`;
-  return `₹${n}`;
-}
-
-function fullINR(n: number): string {
-  return `₹${n.toLocaleString("en-IN")}`;
-}
+const fmtUSD  = fmtCompact;
+const fullUSD = fmtFull;
 
 type RevQuickPeriod = "today" | "week" | "month" | "quarter" | "year" | "custom";
 
@@ -373,13 +350,13 @@ function RevTooltip({ active, payload, label }: {
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: p.color }} />
             <span className="truncate">{p.name}</span>
           </span>
-          <span className="font-bold text-foreground shrink-0">{fullINR(p.value ?? 0)}</span>
+          <span className="font-bold text-foreground shrink-0">{fullUSD(p.value ?? 0)}</span>
         </div>
       ))}
       {payload.length > 1 && (
         <div className="mt-2 pt-2 border-t border-border/50 flex justify-between">
           <span className="text-muted-foreground">Total</span>
-          <span className="font-bold">{fullINR(total)}</span>
+          <span className="font-bold">{fullUSD(total)}</span>
         </div>
       )}
     </div>
@@ -478,10 +455,10 @@ function DashboardTab({
       border: "border-green-500/20",
     },
     {
-      title: "Rejection Rate",
+      title: "Lost Rate",
       value:
         total > 0
-          ? `${Math.round(((dist?.rejected ?? 0) / total) * 100)}%`
+          ? `${Math.round(((dist?.lost ?? 0) / total) * 100)}%`
           : "0%",
       icon: XCircle,
       color: "text-red-400",
@@ -490,21 +467,7 @@ function DashboardTab({
     },
   ];
 
-  const statusBars: Array<{ key: LeadStatus; label: string }> = [
-    { key: "new",           label: "New"             },
-    { key: "assigned",      label: "Assigned"        },
-    { key: "followup",      label: "Follow Up"       },
-    { key: "interested",    label: "Interested"      },
-    { key: "cnc",           label: "CNC"             },
-    { key: "booking",       label: "Booking"         },
-    { key: "partialbooking",label: "Partial Booking" },
-    { key: "closed",        label: "Closed"          },
-    { key: "rejected",      label: "Rejected"        },
-    { key: "rnr",           label: "RNR"             },
-    { key: "callback",      label: "Call Back"       },
-    { key: "whatsapp",      label: "WhatsApp"        },
-    { key: "student",       label: "Student"         },
-  ];
+  const statusBars: Array<{ key: LeadStatus; label: string }> = LEAD_STATUSES.map((s) => ({ key: s as LeadStatus, label: SM[s].label }));
 
   const medalColors = ["text-yellow-400", "text-slate-400", "text-amber-600"];
   const medalBgs = ["bg-yellow-400/10", "bg-slate-400/10", "bg-amber-600/10"];
@@ -759,8 +722,8 @@ function DashboardTab({
                       {[
                         { label: "Total", value: member.total, cls: "text-foreground", show: "always" },
                         { label: "Closed", value: member.closed, cls: "text-green-400", show: "sm" },
-                        { label: "Revenue", value: `₹${((member.totalPayments ?? 0)).toLocaleString("en-IN")}`, cls: "text-emerald-400", show: "always" },
-                        { label: "Rejected", value: member.rejected, cls: "text-red-400", show: "sm" },
+                        { label: "Revenue", value: fmtFull(member.totalPayments ?? 0), cls: "text-emerald-400", show: "always" },
+                        { label: "Lost", value: member.lost, cls: "text-red-400", show: "sm" },
                       ].map(({ label, value, cls, show }) => (
                         <div
                           key={label}
@@ -867,11 +830,11 @@ function MembersTab({
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center text-emerald-500">Revenue</th>
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden md:table-cell">Assigned</th>
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden md:table-cell">Follow Up</th>
-                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">Interested</th>
+                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">Pending</th>
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">CNC</th>
-                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden xl:table-cell">Booking</th>
+                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden xl:table-cell">Not Connected</th>
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Closed</th>
-                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">Rejected</th>
+                    <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">Lost</th>
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Conv%</th>
                     {isLeaderOrAdmin && (
                       <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Auto-assign</th>
@@ -944,7 +907,7 @@ function MembersTab({
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">
                             <span className="text-sm font-bold text-emerald-400">
-                              ₹{((stat.totalPayments ?? 0)).toLocaleString("en-IN")}
+                              {fmtFull(stat.totalPayments ?? 0)}
                             </span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden md:table-cell">
@@ -954,19 +917,19 @@ function MembersTab({
                             <span className="text-sm text-purple-400">{stat.followup}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">
-                            <span className="text-sm text-violet-400">{stat.interested ?? 0}</span>
+                            <span className="text-sm text-violet-400">{stat.pending_response ?? 0}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">
-                            <span className="text-sm text-slate-400">{stat.cnc ?? 0}</span>
+                            <span className="text-sm text-amber-400">{stat.cnc ?? 0}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden xl:table-cell">
-                            <span className="text-sm text-teal-400">{stat.booking ?? 0}</span>
+                            <span className="text-sm text-slate-400">{stat.not_connected ?? 0}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">
                             <span className="text-sm text-green-400 font-medium">{stat.closed}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center hidden lg:table-cell">
-                            <span className="text-sm text-red-400">{stat.rejected}</span>
+                            <span className="text-sm text-red-400">{stat.lost ?? 0}</span>
                           </td>
                           <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">
                             <ClosureRateBadge rate={closureRate} />
@@ -1173,7 +1136,7 @@ function LeadsTab({
   }
 
   const canActOnLead = (lead: Lead) =>
-    isLeaderOrAdmin && lead.status !== "closed" && lead.status !== "rejected";
+    isLeaderOrAdmin && lead.status !== "closed" && lead.status !== "lost";
 
   return (
     <div className="space-y-4">
@@ -2200,23 +2163,45 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
       </Card>
 
       {/* ── KPI Cards ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Revenue */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Total Received */}
         <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0 }}>
           <Card className="relative overflow-hidden border-border/50 bg-card/80 hover:shadow-lg transition-shadow">
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-emerald-500 to-emerald-600" />
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="space-y-1 flex-1 min-w-0">
-                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total Revenue</p>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total Received</p>
                   {overview.isLoading
                     ? <div className="h-7 w-20 rounded-lg bg-muted/50 animate-pulse mt-1" />
-                    : <p className="text-2xl font-bold text-foreground tabular-nums">{fmtINR(ovData?.totalRevenue ?? 0)}</p>
+                    : <p className="text-2xl font-bold text-foreground tabular-nums">{fmtUSD(ovData?.totalRevenue ?? 0)}</p>
                   }
                   {!overview.isLoading && <p className="text-xs text-muted-foreground">{ovData?.paymentCount ?? 0} payments</p>}
                 </div>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ml-2 bg-gradient-to-br from-emerald-500 to-emerald-600">
-                  <IndianRupee className="h-4 w-4 text-white" />
+                  <DollarSign className="h-4 w-4 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Total Pending */}
+        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.06 }}>
+          <Card className="relative overflow-hidden border-border/50 bg-card/80 hover:shadow-lg transition-shadow">
+            <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-amber-500 to-amber-600" />
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total Pending</p>
+                  {overview.isLoading
+                    ? <div className="h-7 w-20 rounded-lg bg-muted/50 animate-pulse mt-1" />
+                    : <p className="text-2xl font-bold text-foreground tabular-nums">{fmtUSD(ovData?.totalPending ?? 0)}</p>
+                  }
+                  {!overview.isLoading && <p className="text-xs text-muted-foreground">outstanding balance</p>}
+                </div>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ml-2 bg-gradient-to-br from-amber-500 to-amber-600">
+                  <TrendingUp className="h-4 w-4 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -2224,7 +2209,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
         </motion.div>
 
         {/* Top Earner */}
-        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.06 }}>
+        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
           <Card className="relative overflow-hidden border-border/50 bg-card/80 hover:shadow-lg transition-shadow">
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-yellow-500 to-yellow-600" />
             <CardContent className="p-4">
@@ -2236,7 +2221,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                     : <p className="text-xl font-bold text-foreground truncate">{ovData?.topMember?.name ?? "—"}</p>
                   }
                   {!overview.isLoading && ovData?.topMember && (
-                    <p className="text-xs text-muted-foreground">{fullINR(ovData.topMember.revenue)}</p>
+                    <p className="text-xs text-muted-foreground">{fullUSD(ovData.topMember.revenue)}</p>
                   )}
                 </div>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ml-2 bg-gradient-to-br from-yellow-500 to-yellow-600">
@@ -2248,7 +2233,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
         </motion.div>
 
         {/* Avg per Lead */}
-        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.12 }}>
+        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.18 }}>
           <Card className="relative overflow-hidden border-border/50 bg-card/80 hover:shadow-lg transition-shadow">
             <div className="absolute inset-0 opacity-5 bg-gradient-to-br from-blue-500 to-blue-600" />
             <CardContent className="p-4">
@@ -2257,7 +2242,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Avg per Lead</p>
                   {overview.isLoading
                     ? <div className="h-7 w-20 rounded-lg bg-muted/50 animate-pulse mt-1" />
-                    : <p className="text-2xl font-bold text-foreground tabular-nums">{fmtINR(ovData?.avgRevenuePerLead ?? 0)}</p>
+                    : <p className="text-2xl font-bold text-foreground tabular-nums">{fmtUSD(ovData?.avgRevenuePerLead ?? 0)}</p>
                   }
                   {!overview.isLoading && <p className="text-xs text-muted-foreground">{ovData?.payingLeadCount ?? 0} paying leads</p>}
                 </div>
@@ -2323,7 +2308,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
               <div className="h-[260px] w-full animate-pulse rounded-lg bg-muted/50" />
             ) : tlTimeline.length === 0 ? (
               <div className="flex h-[260px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                <IndianRupee className="h-8 w-8 opacity-20" />
+                <DollarSign className="h-8 w-8 opacity-20" />
                 No revenue data for this period
               </div>
             ) : (
@@ -2339,7 +2324,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
                   <XAxis dataKey="label" tick={{ fontSize:10, fill:"hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize:10, fill:"hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => fmtINR(v)} width={58} />
+                  <YAxis tick={{ fontSize:10, fill:"hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v: number) => fmtUSD(v)} width={58} />
                   <RechartsTooltip content={<RevTooltip />} />
                   {tlMembers.length > 1 && (
                     <Legend wrapperStyle={{ fontSize:"11px", paddingTop:"8px" }} formatter={(v) => <span style={{ color:"hsl(var(--foreground))" }}>{v}</span>} />
@@ -2374,7 +2359,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                 </div>
               ) : !(ovData?.memberBreakdown?.length) ? (
                 <div className="flex h-[160px] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <IndianRupee className="h-8 w-8 opacity-20" />
+                  <DollarSign className="h-8 w-8 opacity-20" />
                   No member revenue data
                 </div>
               ) : (
@@ -2408,7 +2393,10 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                                   {m.designation && <p className="text-[10px] text-muted-foreground truncate">{m.designation}</p>}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0 ml-2">
-                                  <span className="text-xs font-bold text-emerald-500 tabular-nums">{fullINR(m.revenue)}</span>
+                                  <span className="text-xs font-bold text-emerald-500 tabular-nums">{fullUSD(m.revenue)}</span>
+                                  {(m.pendingAmount ?? 0) > 0 && (
+                                    <span className="text-[10px] font-medium text-amber-500 tabular-nums">{fullUSD(m.pendingAmount ?? 0)} due</span>
+                                  )}
                                   {isExpanded
                                     ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                                     : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
@@ -2440,7 +2428,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                               <div className="mt-1 ml-4 pl-3 border-l-2 border-border/40 py-2 space-y-1.5">
                                 <div className="grid grid-cols-3 gap-2 text-center">
                                   <div className="rounded-lg bg-muted/30 p-2">
-                                    <p className="text-sm font-bold text-emerald-500 tabular-nums">{fullINR(m.revenue)}</p>
+                                    <p className="text-sm font-bold text-emerald-500 tabular-nums">{fullUSD(m.revenue)}</p>
                                     <p className="text-[10px] text-muted-foreground">Total Revenue</p>
                                   </div>
                                   <div className="rounded-lg bg-muted/30 p-2">
@@ -2453,7 +2441,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                                   </div>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground text-center">
-                                  Avg per lead: <span className="font-semibold text-foreground">{m.leadCount > 0 ? fullINR(Math.round(m.revenue / m.leadCount)) : "—"}</span>
+                                  Avg per lead: <span className="font-semibold text-foreground">{m.leadCount > 0 ? fullUSD(Math.round(m.revenue / m.leadCount)) : "—"}</span>
                                 </p>
                               </div>
                             </motion.div>
@@ -2510,7 +2498,7 @@ function TeamRevenueTab({ teamId }: { teamId: string }) {
                         {m.designation && <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{m.designation}</p>}
                         <div className="mt-3 grid grid-cols-2 gap-1.5 text-center">
                           <div>
-                            <p className="text-sm font-bold text-emerald-500 tabular-nums">{fmtINR(m.revenue)}</p>
+                            <p className="text-sm font-bold text-emerald-500 tabular-nums">{fmtUSD(m.revenue)}</p>
                             <p className="text-[10px] text-muted-foreground">Revenue</p>
                           </div>
                           <div>
@@ -3112,6 +3100,7 @@ function ActivityRow({ item }: { item: TeamActivityItem }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 function TeamDetailPageContent() {
+  useCurrencyStore(); // subscribe so component re-renders on currency change
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -2,7 +2,11 @@ import type { User } from "@/types";
 import type { Team } from "@/types/team";
 import type { Course } from "@/types/course";
 
-export type LeadStatus = "new" | "assigned" | "followup" | "closed" | "rejected" | "cnc" | "booking" | "partialbooking" | "interested" | "rnr" | "callback" | "whatsapp" | "student";
+export type LeadStatus = "new" | "assigned" | "pending_response" | "followup" | "closed" | "lost" | "not_connected" | "mia" | "repeated" | "callback" | "cnc";
+
+export type InitialLeadResponse  = "very_interested" | "not_interested" | "let_me_think";
+export type PrimaryConcern       = "risk" | "price" | "time" | "trust" | "exact_concern";
+export type FollowupStrategyType = "risk_based" | "price_based" | "time_based" | "trust_based";
 
 export type ActivityAction =
   | "lead_created"
@@ -88,6 +92,10 @@ export interface Lead {
   lastFollowupDate?: string | null;
   demoScheduled?: boolean;
   demoAttended?: boolean;
+  firstContactTime?: string | null;
+  initialLeadResponse?: InitialLeadResponse | null;
+  primaryConcern?: PrimaryConcern | null;
+  followupStrategyType?: FollowupStrategyType | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -116,17 +124,15 @@ export interface LeadStats {
   total: number;
   new: number;
   assigned: number;
+  pending_response: number;
   followup: number;
   closed: number;
-  rejected: number;
-  cnc: number;
-  booking: number;
-  partialbooking: number;
-  interested: number;
-  rnr: number;
+  lost: number;
+  not_connected: number;
+  mia: number;
+  repeated: number;
   callback: number;
-  whatsapp: number;
-  student: number;
+  cnc: number;
 }
 
 export interface InvalidRow {

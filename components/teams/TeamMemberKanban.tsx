@@ -17,52 +17,27 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getInitials } from "@/lib/utils";
-import type { Lead, LeadStatus } from "@/types/lead";
+import type { Lead } from "@/types/lead";
+import { LEAD_STATUSES, STATUS_META, type LeadStatus } from "@/lib/statusConfig";
 import type { Team } from "@/types/team";
 import type { User } from "@/types";
 
 // ─── Status options ───────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: { value: LeadStatus | "all"; label: string }[] = [
-  { value: "all",            label: "All Status"      },
-  { value: "new",            label: "New"             },
-  { value: "assigned",       label: "Assigned"        },
-  { value: "followup",       label: "Follow Up"       },
-  { value: "interested",     label: "Interested"      },
-  { value: "cnc",            label: "CNC"             },
-  { value: "booking",        label: "Booking"         },
-  { value: "partialbooking", label: "Partial Booking" },
-  { value: "closed",         label: "Closed"          },
-  { value: "rejected",       label: "Rejected"        },
-  { value: "rnr",            label: "RNR"             },
-  { value: "callback",       label: "Call Back"       },
-  { value: "whatsapp",       label: "WhatsApp"        },
-  { value: "student",        label: "Student"         },
+  { value: "all", label: "All Status" },
+  ...LEAD_STATUSES.map((s) => ({ value: s as LeadStatus, label: STATUS_META[s].label })),
 ];
 
 // ─── Status colours (for cards & filter pills) ────────────────────────────────
 
-const STATUS_COLORS: Record<string, string> = {
-  new:            "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  assigned:       "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  followup:       "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  interested:     "bg-violet-500/15 text-violet-400 border-violet-500/30",
-  cnc:            "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  booking:        "bg-teal-500/15 text-teal-400 border-teal-500/30",
-  partialbooking: "bg-pink-500/15 text-pink-400 border-pink-500/30",
-  closed:         "bg-green-500/15 text-green-400 border-green-500/30",
-  rejected:       "bg-red-500/15 text-red-400 border-red-500/30",
-  rnr:            "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  callback:       "bg-sky-500/15 text-sky-400 border-sky-500/30",
-  whatsapp:       "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  student:        "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
-};
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, STATUS_META[s].color]),
+);
 
-const STATUS_LABEL: Record<string, string> = {
-  new: "New", assigned: "Assigned", followup: "Follow Up", interested: "Interested",
-  cnc: "CNC", booking: "Booking", partialbooking: "Partial", closed: "Closed",
-  rejected: "Rejected", rnr: "RNR", callback: "Callback", whatsapp: "WhatsApp", student: "Student",
-};
+const STATUS_LABEL: Record<string, string> = Object.fromEntries(
+  LEAD_STATUSES.map((s) => [s, STATUS_META[s].label]),
+);
 
 // ─── Member colour palette ────────────────────────────────────────────────────
 
