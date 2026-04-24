@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -21,6 +22,7 @@ import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONF
 import type { Course } from "@/types/course";
 import type { User } from "@/types";
 import type { StudentStatus, FeeStatus } from "@/types/student";
+import { EditStudentModal } from "@/components/students/EditStudentModal";
 
 const STUDENT_STATUS: Record<StudentStatus, { label: string; color: string }> = {
   active:    { label: "Active",    color: "bg-green-500/15 text-green-400 border-green-500/30"   },
@@ -67,6 +69,7 @@ export default function StudentDetailPage() {
 
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesVal, setNotesVal] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) return (
     <div className="flex items-center justify-center py-32">
@@ -126,6 +129,9 @@ export default function StudentDetailPage() {
                         <ExternalLink className="h-3 w-3" /> View Lead
                       </Link>
                     )}
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => setEditOpen(true)}>
+                      <Edit2 className="h-3 w-3" /> Edit
+                    </Button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3 mt-3 text-sm text-muted-foreground">
@@ -352,9 +358,8 @@ export default function StudentDetailPage() {
           </motion.div>
         </div>
       </div>
+
+      <EditStudentModal open={editOpen} student={student} onClose={() => setEditOpen(false)} />
     </div>
   );
 }
-
-// Fix missing import
-import Link from "next/link";

@@ -189,7 +189,7 @@ function StudentsPageContent() {
   const { data, isLoading } = useStudents(filters);
   const { data: coursesData } = useAllCourses();
   const { data: teamsData   } = useTeams({ limit: 100 });
-  const { data: usersData   } = useUsers({ limit: 200 });
+  const { data: usersData   } = useUsers({ limit: "200" });
   const deleteMut = useDeleteStudent();
 
   const students   = data?.data    ?? [];

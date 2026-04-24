@@ -70,6 +70,7 @@ export interface CreateStudentInput {
   firstContactTime?: string | null;
   lastFollowupDate?: string | null;
   enrollmentDate?: string;
+  status?: StudentStatus;
   feeStatus?: FeeStatus;
   totalFee?: number;
   paidAmount?: number;

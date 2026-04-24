@@ -76,7 +76,7 @@ function PaletteContent({ open, onClose, onNavigate }: PaletteContentProps) {
 
   // Permitted nav items
   const allowedPages = useMemo(
-    () => navItems.filter(item => hasPermission(item.permModule, "view")),
+    () => navItems.filter(item => item.permModule === null || hasPermission(item.permModule, "view")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
