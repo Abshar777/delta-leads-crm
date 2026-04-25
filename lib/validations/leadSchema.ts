@@ -11,6 +11,11 @@ const baseLeadFields = z.object({
   lastFollowupDate: z.string().optional().nullable(),
   demoScheduled:   z.boolean().optional(),
   demoAttended:    z.boolean().optional(),
+  // Lead insight fields — edited inline on the detail page
+  firstContactTime:      z.string().optional().nullable(),
+  initialLeadResponse:   z.string().optional().nullable(),
+  primaryConcern:        z.string().optional().nullable(),
+  followupStrategyType:  z.string().optional().nullable(),
 });
 
 // Create — adds optional team + assignedTo

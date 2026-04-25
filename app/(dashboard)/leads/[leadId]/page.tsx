@@ -871,7 +871,7 @@ export default function LeadDetailPage() {
                             : "";
                           if (val !== current) {
                             const iso = val ? new Date(`${val}:00+05:30`).toISOString() : null;
-                            updateLead.mutate({ id: lead._id, data: { firstContactTime: iso } as never });
+                            updateLead.mutate({ id: lead._id, data: { firstContactTime: iso } });
                           }
                         }}
                         disabled={updateLead.isPending}
@@ -887,7 +887,7 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.initialLeadResponse ?? "__none__"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { initialLeadResponse: val === "__none__" ? null : val } as never })
+                          updateLead.mutate({ id: lead._id, data: { initialLeadResponse: val === "__none__" ? null : val } })
                         }
                         disabled={updateLead.isPending}
                       >
@@ -919,7 +919,7 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.primaryConcern ?? "__none__"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { primaryConcern: val === "__none__" ? null : val } as never })
+                          updateLead.mutate({ id: lead._id, data: { primaryConcern: val === "__none__" ? null : val } })
                         }
                         disabled={updateLead.isPending}
                       >
@@ -951,7 +951,7 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.followupStrategyType ?? "__none__"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { followupStrategyType: val === "__none__" ? null : val } as never })
+                          updateLead.mutate({ id: lead._id, data: { followupStrategyType: val === "__none__" ? null : val } })
                         }
                         disabled={updateLead.isPending}
                       >
@@ -988,7 +988,7 @@ export default function LeadDetailPage() {
                         onBlur={(e) => {
                           const val = e.target.value;
                           if (val !== (lead.lastFollowupDate?.slice(0, 10) ?? "")) {
-                            updateLead.mutate({ id: lead._id, data: { lastFollowupDate: val || null } as never });
+                            updateLead.mutate({ id: lead._id, data: { lastFollowupDate: val || null } });
                           }
                         }}
                         disabled={updateLead.isPending}
@@ -1001,7 +1001,7 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.demoScheduled ? "true" : "false"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { demoScheduled: val === "true" } as never })
+                          updateLead.mutate({ id: lead._id, data: { demoScheduled: val === "true" } })
                         }
                         disabled={updateLead.isPending}
                       >
@@ -1021,7 +1021,7 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.demoAttended ? "true" : "false"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { demoAttended: val === "true" } as never })
+                          updateLead.mutate({ id: lead._id, data: { demoAttended: val === "true" } })
                         }
                         disabled={updateLead.isPending}
                       >
