@@ -101,12 +101,13 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
             : "",
           demoScheduled:   lead.demoScheduled ?? false,
           demoAttended:    lead.demoAttended ?? false,
+          sellingAmount:   lead.sellingAmount ?? null,
           course: (typeof lead.course === "object" && lead.course !== null)
             ? (lead.course as { _id: string })._id
             : (lead.course as string | null | undefined) ?? "",
         } as UpdateLeadFormValues as never);
       } else {
-        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, course: "", team: "", assignedTo: "" });
+        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, sellingAmount: null, course: "", team: "", assignedTo: "" });
       }
     }
   }, [open, lead, reset]);
@@ -117,6 +118,7 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
       lastFollowupDate?: string;
       demoScheduled?: boolean;
       demoAttended?: boolean;
+      sellingAmount?: number | null;
     };
     const payload = {
       ...data,
@@ -126,6 +128,7 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
       lastFollowupDate: extended.lastFollowupDate || undefined,
       demoScheduled:    extended.demoScheduled ?? false,
       demoAttended:     extended.demoAttended ?? false,
+      sellingAmount:    extended.sellingAmount ?? null,
       course:           data.course     || undefined,
       team:             (data as CreateLeadFormValues).team       || undefined,
       assignedTo:       (data as CreateLeadFormValues).assignedTo || undefined,
@@ -266,6 +269,23 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
                     </SelectContent>
                   </Select>
                 )}
+              />
+            </div>
+
+            {/* Selling Amount */}
+            <div className="space-y-1.5">
+              <Label htmlFor="lead-selling-amount">
+                Selling Amount
+                <span className="text-muted-foreground text-xs ml-1">(negotiated price)</span>
+              </Label>
+              <Input
+                id="lead-selling-amount"
+                type="number"
+                min={0}
+                placeholder="e.g. 15000"
+                {...register("sellingAmount" as never, {
+                  setValueAs: (v: string) => (v === "" || v === undefined ? null : Number(v)),
+                })}
               />
             </div>
 

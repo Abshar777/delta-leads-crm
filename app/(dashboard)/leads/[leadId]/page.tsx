@@ -8,7 +8,7 @@ import {
   RefreshCw, StickyNote, Send, Pencil, Trash2, CheckCheck,
   X, ChevronDown, Activity, Clock, UserCheck, FilePlus2,
   MessageSquarePlus, PencilLine, Minus, UsersRound, ArrowRightLeft, BookOpen,
-  PhoneOff, Plus, MessageSquare, AlertTriangle, Target, TrendingUp,
+  PhoneOff, Plus, MessageSquare, AlertTriangle, Target, TrendingUp, CircleDollarSign,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -613,6 +613,19 @@ export default function LeadDetailPage() {
                   </div>
                 )}
 
+                {/* Selling Amount */}
+                {lead.sellingAmount != null && (
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-md bg-primary/10 p-1.5">
+                      <CircleDollarSign className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground mb-0.5">Selling Amount</p>
+                      <p className="text-sm font-semibold text-primary">{fmtFull(lead.sellingAmount)}</p>
+                    </div>
+                  </div>
+                )}
+
                 {lead.firstContactTime && (
                   <InfoRow icon={Clock} label="First Contact Time" value={new Date(lead.firstContactTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) + " IST"} />
                 )}
@@ -844,6 +857,32 @@ export default function LeadDetailPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Selling Amount */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <CircleDollarSign className="h-3 w-3" />
+                        Selling Amount
+                        <span className="text-[10px] text-muted-foreground/60">(negotiated price)</span>
+                      </p>
+                      <Input
+                        type="number"
+                        min={0}
+                        className="h-8 text-xs"
+                        defaultValue={lead.sellingAmount ?? ""}
+                        key={lead.sellingAmount ?? "sa-none"}
+                        placeholder="e.g. 15000"
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          const newVal = raw === "" ? null : Number(raw);
+                          const current = lead.sellingAmount ?? null;
+                          if (newVal !== current) {
+                            updateLead.mutate({ id: lead._id, data: { sellingAmount: newVal } });
+                          }
+                        }}
+                        disabled={updateLead.isPending}
+                      />
                     </div>
 
                     {/* ─── Lead Insight Fields ─────────────────────────────── */}
@@ -1153,6 +1192,7 @@ export default function LeadDetailPage() {
           <PaymentPanel
             leadId={lead._id}
             payments={lead.payments ?? []}
+            sellingAmount={lead.sellingAmount ?? undefined}
             courseAmount={
               typeof lead.course === "object" && lead.course
                 ? (lead.course as Course).amount

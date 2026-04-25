@@ -16,6 +16,7 @@ const baseLeadFields = z.object({
   initialLeadResponse:   z.string().optional().nullable(),
   primaryConcern:        z.string().optional().nullable(),
   followupStrategyType:  z.string().optional().nullable(),
+  sellingAmount:         z.number().min(0, "Selling amount cannot be negative").optional().nullable(),
 });
 
 // Create — adds optional team + assignedTo

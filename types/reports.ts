@@ -169,6 +169,8 @@ export interface RevenueAgentItem {
 export interface RevenueOverview {
   totalRevenue:       number;
   totalPending:       number;
+  overpaidCount:      number;
+  overpaidTotal:      number;
   payingLeadCount:    number;
   paymentCount:       number;
   avgRevenuePerLead:  number;

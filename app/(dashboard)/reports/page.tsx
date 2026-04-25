@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
-  Loader2, Tag, X, ArrowUpRight,
+  Loader2, Tag, X, ArrowUpRight, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1039,7 +1039,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
     <div className="space-y-6">
 
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard
           title="Total Received"
           value={overview.isLoading ? "—" : fmtUSD(ovData?.totalRevenue ?? 0)}
@@ -1059,12 +1059,25 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
           loading={overview.isLoading}
         />
         <KpiCard
+          title="Overpaid Leads"
+          value={overview.isLoading ? "—" : String(ovData?.overpaidCount ?? 0)}
+          sub={overview.isLoading ? "—" : `${fmtUSD(ovData?.overpaidTotal ?? 0)} excess`}
+          icon={AlertTriangle}
+          gradient={
+            (ovData?.overpaidCount ?? 0) > 0
+              ? "bg-gradient-to-br from-red-500 to-red-600"
+              : "bg-gradient-to-br from-slate-500 to-slate-600"
+          }
+          delay={0.12}
+          loading={overview.isLoading}
+        />
+        <KpiCard
           title="Top Earning Team"
           value={overview.isLoading ? "—" : fmtUSD(ovData?.topTeam?.revenue ?? 0)}
           sub={ovData?.topTeam?.name ?? "No data"}
           icon={Trophy}
           gradient="bg-gradient-to-br from-yellow-500 to-yellow-600"
-          delay={0.12}
+          delay={0.18}
           loading={overview.isLoading}
         />
         <KpiCard
@@ -1073,7 +1086,7 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
           sub={ovData?.topAgent?.name ?? "No data"}
           icon={Award}
           gradient="bg-gradient-to-br from-violet-500 to-violet-600"
-          delay={0.18}
+          delay={0.24}
           loading={overview.isLoading}
         />
         <KpiCard
@@ -1082,9 +1095,8 @@ function RevenueTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) 
           sub={`${ovData?.payingLeadCount ?? 0} paying leads`}
           icon={Activity}
           gradient="bg-gradient-to-br from-blue-500 to-blue-600"
-          delay={0.24}
+          delay={0.30}
           loading={overview.isLoading}
-          className="col-span-2 lg:col-span-1"
         />
       </div>
 

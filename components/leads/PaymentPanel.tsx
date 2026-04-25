@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  DollarSign, Plus, Pencil, Trash2, Check, X,
-  TrendingUp, CircleDollarSign, Wallet, Calendar,
+  DollarSign, Plus, Pencil, Trash2,
+  TrendingUp, CircleDollarSign, Wallet, Calendar, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,11 +112,12 @@ function PaymentForm({ initial, onSave, onCancel, saving }: PaymentFormProps) {
 interface PaymentPanelProps {
   leadId: string;
   payments: Payment[];
-  courseAmount?: number;   // total fee from the linked course
+  sellingAmount?: number;  // negotiated price for this lead (preferred)
+  courseAmount?: number;   // fallback: total fee from the linked course
   canEdit: boolean;
 }
 
-export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: PaymentPanelProps) {
+export function PaymentPanel({ leadId, payments, sellingAmount, courseAmount, canEdit }: PaymentPanelProps) {
   useCurrencyStore(); // subscribe so component re-renders on currency change
   const [adding,    setAdding]    = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -131,16 +132,22 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
   );
 
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const hasTotal  = courseAmount != null && courseAmount > 0;
-  const pct       = hasTotal ? Math.min(100, (totalPaid / courseAmount!) * 100) : null;
-  const remaining = hasTotal ? Math.max(0, courseAmount! - totalPaid) : null;
+
+  // sellingAmount takes priority over courseAmount for progress tracking
+  const targetAmount = sellingAmount ?? courseAmount;
+  const hasTotal     = targetAmount != null && targetAmount > 0;
+  const pct          = hasTotal ? Math.min(100, (totalPaid / targetAmount!) * 100) : null;
+  const remaining    = hasTotal ? targetAmount! - totalPaid : null;
+  const isOverpaid   = hasTotal && totalPaid > targetAmount!;
+  const overpaidBy   = isOverpaid ? totalPaid - targetAmount! : 0;
 
   // bar color based on %
   const barColor =
-    pct == null ? "bg-primary" :
-    pct >= 100  ? "bg-green-500" :
-    pct >= 50   ? "bg-blue-500"  :
-                  "bg-amber-500";
+    pct == null     ? "bg-primary" :
+    isOverpaid      ? "bg-red-500" :
+    pct >= 100      ? "bg-green-500" :
+    pct >= 50       ? "bg-blue-500"  :
+                      "bg-amber-500";
 
   return (
     <Card className="border-border/50">
@@ -172,32 +179,49 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
         {/* Summary strip */}
         {(payments.length > 0 || hasTotal) && (
           <div className="rounded-xl border border-border/50 bg-muted/30 p-3 space-y-2.5">
+            {/* Overpaid alert */}
+            {isOverpaid && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                <p className="text-xs font-medium text-red-400">
+                  Overpaid by {fmt(overpaidBy)} — exceeds the selling price
+                </p>
+              </motion.div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-0.5">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                   <Wallet className="h-3 w-3" /> Total Paid
                 </p>
-                <p className="text-base font-bold text-green-400">{fmt(totalPaid)}</p>
+                <p className={cn("text-base font-bold", isOverpaid ? "text-red-400" : "text-green-400")}>
+                  {fmt(totalPaid)}
+                </p>
               </div>
               {hasTotal && (
                 <>
                   <div className="space-y-0.5">
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" /> Remaining
+                      <TrendingUp className="h-3 w-3" /> {isOverpaid ? "Overpaid" : "Remaining"}
                     </p>
                     <p className={cn(
                       "text-base font-bold",
-                      remaining === 0 ? "text-green-400" : "text-red-400",
+                      isOverpaid ? "text-red-400" : remaining === 0 ? "text-green-400" : "text-amber-400",
                     )}>
-                      {fmt(remaining!)}
+                      {isOverpaid ? fmt(overpaidBy) : fmt(remaining!)}
                     </p>
                   </div>
                   <div className="col-span-2 space-y-1">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-muted-foreground">Course fee: {fmt(courseAmount!)}</span>
+                      <span className="text-muted-foreground">
+                        {sellingAmount != null ? "Selling price" : "Course fee"}: {fmt(targetAmount!)}
+                      </span>
                       <span className={cn(
                         "font-semibold",
-                        pct! >= 100 ? "text-green-400" : "text-foreground",
+                        isOverpaid ? "text-red-400" : pct! >= 100 ? "text-green-400" : "text-foreground",
                       )}>
                         {pct!.toFixed(1)}% paid
                       </span>
@@ -206,7 +230,7 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
                       <motion.div
                         className={cn("h-full rounded-full", barColor)}
                         initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
+                        animate={{ width: `${Math.min(100, pct!)}%` }}
                         transition={{ duration: 0.6, ease: "easeOut" }}
                       />
                     </div>
@@ -287,9 +311,9 @@ export function PaymentPanel({ leadId, payments, courseAmount, canEdit }: Paymen
                       <div className="flex-1 min-w-0 space-y-0.5">
                         <div className="flex items-center gap-2">
                           <span className="text-base font-bold text-green-400">{fmt(p.amount)}</span>
-                          {pct != null && (
+                          {pct != null && targetAmount != null && (
                             <span className="text-[10px] text-muted-foreground">
-                              ({((p.amount / courseAmount!) * 100).toFixed(1)}%)
+                              ({((p.amount / targetAmount) * 100).toFixed(1)}%)
                             </span>
                           )}
                         </div>

@@ -96,6 +96,7 @@ export interface Lead {
   initialLeadResponse?: InitialLeadResponse | null;
   primaryConcern?: PrimaryConcern | null;
   followupStrategyType?: FollowupStrategyType | null;
+  sellingAmount?: number | null;
   createdAt: string;
   updatedAt: string;
 }
