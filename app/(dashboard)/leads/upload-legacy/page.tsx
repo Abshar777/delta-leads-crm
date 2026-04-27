@@ -1,10 +1,10 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileSpreadsheet, ChevronDown, ChevronUp,
   ArrowLeft, CheckCircle2, XCircle, Loader2, AlertCircle,
-  History, Info, User, Check, ChevronsUpDown, Globe,
+  History, Info, User, Check, ChevronsUpDown, Globe, Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useUploadLegacyLeads } from "@/hooks/useLeads";
 import { useUsers } from "@/hooks/useUsers";
+import { useAuthStore } from "@/lib/store/authStore";
 
 // ─── Template Download ─────────────────────────────────────────────────────────
 
@@ -213,6 +214,7 @@ function ResultSummary({ result }: { result: LegacyResult }) {
 export default function UploadLegacyLeadsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthStore();
   const [dragOver, setDragOver]         = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sourceOverride, setSourceOverride] = useState("__auto__");
@@ -222,6 +224,21 @@ export default function UploadLegacyLeadsPage() {
   const { mutate: uploadLegacy, isPending } = useUploadLegacyLeads();
   const { data: usersData, isLoading: usersLoading } = useUsers({ status: "active", limit: "200" });
   const users = usersData?.data ?? [];
+
+  // ── Role detection (mirrors upload/page.tsx) ──────────────────────────────
+  const isSuperAdmin = user?.role?.isSystemRole === true && user?.role?.roleName === "Super Admin";
+  const canSeeAllUsers =
+    isSuperAdmin ||
+    user?.role?.roleName === "Team Leader" ||
+    user?.role?.roleName === "Reporter";
+  const isBDE = !!user && !canSeeAllUsers;
+
+  // BDE: auto-lock to themselves once we have the user
+  useEffect(() => {
+    if (isBDE && user?._id && !assignedTo) {
+      setAssignedTo(user._id);
+    }
+  }, [isBDE, user?._id]);
 
   // Build options for the counselor combobox
   const counselorOptions: ComboboxOption[] = [
@@ -324,56 +341,83 @@ export default function UploadLegacyLeadsPage() {
         <div className="grid gap-4 md:grid-cols-2">
 
           {/* Counselor selection */}
-          <Card className="border-border/50">
+          <Card className={cn("border-border/50", isBDE && "border-primary/25")}>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
+                {isBDE ? <Lock className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-primary" />}
                 Assign to Counselor
-                <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                {isBDE ? (
+                  <span className="text-xs font-normal text-primary/70 flex items-center gap-1">
+                    <Lock className="h-2.5 w-2.5" />auto
+                  </span>
+                ) : (
+                  <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                All leads will be assigned to the selected counselor.
-                Terminal statuses (Closed, Lost, Repeated…) are never overridden.
-              </p>
-
-              {usersLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />Loading counselors…
-                </div>
+              {isBDE ? (
+                /* BDE — locked to themselves */
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/8 px-4 py-3"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary font-semibold text-sm">
+                    {user?.name?.charAt(0)?.toUpperCase() ?? "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                </motion.div>
               ) : (
-                <SearchableCombobox
-                  options={counselorOptions}
-                  value={assignedTo}
-                  onChange={setAssignedTo}
-                  placeholder="Search and select a counselor…"
-                  searchPlaceholder="Search by name or email…"
-                  emptyText="No counselor found."
-                  renderSelected={(opt) => (
-                    <span className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 text-primary shrink-0" />
-                      {opt.label}
-                    </span>
-                  )}
-                />
-              )}
+                /* Admin / Reporter / Team Leader — free to choose */
+                <>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    All leads will be assigned to the selected counselor.
+                    Terminal statuses (Closed, Lost, Repeated…) are never overridden.
+                  </p>
 
-              <AnimatePresence>
-                {assignedTo && selectedCounselor && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="flex items-center gap-1.5 rounded-lg bg-primary/8 border border-primary/20 px-3 py-2"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <p className="text-xs text-primary">
-                      Active leads → <strong>{selectedCounselor.name}</strong>
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  {usersLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />Loading counselors…
+                    </div>
+                  ) : (
+                    <SearchableCombobox
+                      options={counselorOptions}
+                      value={assignedTo}
+                      onChange={setAssignedTo}
+                      placeholder="Search and select a counselor…"
+                      searchPlaceholder="Search by name or email…"
+                      emptyText="No counselor found."
+                      renderSelected={(opt) => (
+                        <span className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                          {opt.label}
+                        </span>
+                      )}
+                    />
+                  )}
+
+                  <AnimatePresence>
+                    {assignedTo && selectedCounselor && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="flex items-center gap-1.5 rounded-lg bg-primary/8 border border-primary/20 px-3 py-2"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <p className="text-xs text-primary">
+                          Active leads → <strong>{selectedCounselor.name}</strong>
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </CardContent>
           </Card>
 
