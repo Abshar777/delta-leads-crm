@@ -191,6 +191,38 @@ export const useUploadLeads = () => {
   });
 };
 
+export const useUploadLegacyLeads = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      file,
+      assignedTo,
+      sourceOverride,
+    }: {
+      file: File;
+      assignedTo?: string;
+      sourceOverride?: string;
+    }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (assignedTo) formData.append("assignedTo", assignedTo);
+      if (sourceOverride) formData.append("sourceOverride", sourceOverride);
+      const response = await api.post<ApiResponse<{
+        summary: { total: number; created: number; duplicate: number; invalid: number; assigned: number };
+        results: Array<{ index: number; status: string; leadId?: string; phone?: string; reason?: string }>;
+      }>>("/leads/upload/legacy", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return response.data.data!;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: LEADS_KEY });
+      toast.success(`Import complete: ${data.summary.created} leads created`);
+    },
+    onError: (error: unknown) => toast.error(errMsg(error, "Failed to import leads")),
+  });
+};
+
 export const useAutoAssignLeads = () => {
   const queryClient = useQueryClient();
   return useMutation({

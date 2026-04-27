@@ -5,7 +5,7 @@ import {
   Plus, Search, Pencil, Trash2, Loader2, ChevronLeft, ChevronRight,
   X, Upload, FileText, ChevronDown, ExternalLink, AlertTriangle,
   CalendarDays, Filter, Tags, ArrowRightLeft, CheckSquare, Square,
-  LayoutGrid, List, Columns3, GripVertical,
+  LayoutGrid, List, Columns3, GripVertical, Phone, History,
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -47,6 +47,8 @@ import { useStudentByLeadId } from "@/hooks/useStudents";
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
+
+const THREECX_URL = "https://deltainstitutions.3cx.ae:5002";
 
 const STATUS_OPTIONS: { value: LeadStatus | "all"; label: string }[] = [
   { value: "all", label: "All Status" },
@@ -645,6 +647,10 @@ function LeadsPageContent() {
         <div className="flex items-center gap-2">
           {canCreate && (
             <>
+              <Button variant="outline" onClick={() => router.push("/leads/upload-legacy")} className="gap-2">
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">Import Old Leads</span>
+              </Button>
               <Button variant="outline" onClick={() => router.push("/leads/upload")} className="gap-2">
                 <Upload className="h-4 w-4" />
                 <span className="hidden sm:inline">Upload Leads</span>
@@ -1208,6 +1214,18 @@ function LeadsPageContent() {
                             </div>
                             {/* Actions */}
                             <div className="flex items-center gap-0.5 shrink-0">
+                              {lead.phone && (
+                                <motion.a
+                                  href={`${THREECX_URL}/#/make-call/${lead.phone.replace(/\s+/g, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  whileTap={{ scale: 0.95 }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-green-400 hover:bg-green-500/10 transition-colors"
+                                  title={`Call ${lead.phone}`}
+                                >
+                                  <Phone className="h-4 w-4" />
+                                </motion.a>
+                              )}
                               <Link href={`/leads/${lead._id}`}>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View">
                                   <ExternalLink className="h-4 w-4" />
@@ -1269,6 +1287,18 @@ function LeadsPageContent() {
 
                               <td className="px-4 py-4">
                                 <div className="flex items-center justify-end gap-1">
+                                  {lead.phone && (
+                                    <motion.a
+                                      href={`${THREECX_URL}/#/make-call/${lead.phone.replace(/\s+/g, "")}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      whileTap={{ scale: 0.95 }}
+                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-green-400 hover:bg-green-500/10 md:opacity-0 group-hover:opacity-100 transition-all"
+                                      title={`Call ${lead.phone}`}
+                                    >
+                                      <Phone className="h-4 w-4" />
+                                    </motion.a>
+                                  )}
                                   <Link href={`/leads/${lead._id}`}>
                                     <Button
                                       variant="ghost" size="icon"

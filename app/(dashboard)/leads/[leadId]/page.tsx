@@ -45,6 +45,7 @@ import LeadDialog from "@/components/leads/LeadDialog";
 import { ReminderPanel } from "@/components/leads/ReminderPanel";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import { PaymentPanel } from "@/components/leads/PaymentPanel";
+import { CallsPanel } from "@/components/leads/CallsPanel";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
@@ -83,16 +84,35 @@ function StatusBadge({ status }: { status: LeadStatus }) {
   );
 }
 
+const THREECX_URL = "https://deltainstitutions.3cx.ae:5002";
+
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
   if (!value) return null;
+  const isPhone = label === "Phone";
   return (
     <div className="flex items-start gap-3">
       <div className="mt-0.5 rounded-md bg-muted/50 p-1.5">
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-        <p className="text-sm font-medium text-foreground break-all">{value}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-foreground break-all">{value}</p>
+          {isPhone && (
+            <motion.a
+              href={`${THREECX_URL}/#/make-call/${value.replace(/\s+/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-400 border border-green-500/20 hover:bg-green-500/25 transition-colors shrink-0"
+              title="Call via 3CX"
+            >
+              <Phone className="h-3 w-3" />
+              Call
+            </motion.a>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -540,6 +560,15 @@ export default function LeadDetailPage() {
                 <InfoRow icon={Mail} label="Email" value={lead.email} />
                 <InfoRow icon={Phone} label="Phone" value={lead.phone} />
                 <InfoRow icon={Globe} label="Source" value={lead.source} />
+                {lead.campaign && (
+                  <InfoRow icon={TrendingUp} label="Campaign" value={lead.campaign} />
+                )}
+                {lead.platform && (
+                  <InfoRow icon={Globe} label="Platform" value={lead.platform} />
+                )}
+                {lead.leadReceivedTime && (
+                  <InfoRow icon={Clock} label="Lead Received" value={lead.leadReceivedTime} />
+                )}
 
                 {/* Assigned To */}
                 <div className="flex items-start gap-3">
@@ -667,16 +696,53 @@ export default function LeadDetailPage() {
                   <InfoRow icon={Calendar} label="Last Follow-up" value={new Date(lead.lastFollowupDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })} />
                 )}
                 {/* Demo badges */}
-                {(lead.demoScheduled || lead.demoAttended) && (
+                {(lead.demoScheduled != null || lead.demoAttended != null) && (
                   <div className="flex items-center gap-2 flex-wrap">
-                    {lead.demoScheduled && (
-                      <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400 border border-violet-500/20">Demo Scheduled</span>
+                    {lead.demoScheduled === true && (
+                      <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400 border border-violet-500/20">✓ Demo Scheduled</span>
                     )}
-                    {lead.demoAttended && (
-                      <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">Demo Attended</span>
+                    {lead.demoScheduled === false && (
+                      <span className="inline-flex items-center rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground border border-border">✗ Demo Not Scheduled</span>
+                    )}
+                    {lead.demoAttended === true && (
+                      <span className="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-400 border border-green-500/20">✓ Demo Attended</span>
+                    )}
+                    {lead.demoAttended === false && (
+                      <span className="inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 border border-red-500/20">✗ Demo Not Attended</span>
                     )}
                   </div>
                 )}
+
+                {/* Exact Concern */}
+                {lead.exactConcern && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                  >
+                    <p className="text-[11px] font-medium text-amber-400 mb-1.5 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Exact Concern
+                    </p>
+                    <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{lead.exactConcern}</p>
+                  </motion.div>
+                )}
+
+                {/* Comments */}
+                {lead.comments && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-border/50 bg-muted/20 p-3"
+                  >
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" />
+                      Comments
+                    </p>
+                    <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{lead.comments}</p>
+                  </motion.div>
+                )}
+
                 <InfoRow icon={Calendar} label="Created" value={formatDate(lead.createdAt)} />
                 <InfoRow icon={Clock} label="Last Updated" value={formatDate(lead.updatedAt)} />
 
@@ -1038,16 +1104,17 @@ export default function LeadDetailPage() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1.5">Demo Scheduled?</p>
                       <Select
-                        value={lead.demoScheduled ? "true" : "false"}
+                        value={lead.demoScheduled == null ? "__none__" : lead.demoScheduled ? "true" : "false"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { demoScheduled: val === "true" } })
+                          updateLead.mutate({ id: lead._id, data: { demoScheduled: val === "__none__" ? null : val === "true" } })
                         }
                         disabled={updateLead.isPending}
                       >
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder="Not set" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="__none__" className="text-xs text-muted-foreground">— Not set —</SelectItem>
                           <SelectItem value="false" className="text-xs">No</SelectItem>
                           <SelectItem value="true" className="text-xs">Yes</SelectItem>
                         </SelectContent>
@@ -1058,20 +1125,63 @@ export default function LeadDetailPage() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1.5">Demo Attended?</p>
                       <Select
-                        value={lead.demoAttended ? "true" : "false"}
+                        value={lead.demoAttended == null ? "__none__" : lead.demoAttended ? "true" : "false"}
                         onValueChange={(val) =>
-                          updateLead.mutate({ id: lead._id, data: { demoAttended: val === "true" } })
+                          updateLead.mutate({ id: lead._id, data: { demoAttended: val === "__none__" ? null : val === "true" } })
                         }
                         disabled={updateLead.isPending}
                       >
                         <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
+                          <SelectValue placeholder="Not set" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="__none__" className="text-xs text-muted-foreground">— Not set —</SelectItem>
                           <SelectItem value="false" className="text-xs">No</SelectItem>
                           <SelectItem value="true" className="text-xs">Yes</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Exact Concern */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Exact Concern
+                      </p>
+                      <Textarea
+                        className="text-xs min-h-[70px] resize-none"
+                        placeholder="Describe the exact concern..."
+                        defaultValue={lead.exactConcern ?? ""}
+                        key={`ec-${lead._id}-${lead.updatedAt}`}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (lead.exactConcern ?? "")) {
+                            updateLead.mutate({ id: lead._id, data: { exactConcern: val || null } });
+                          }
+                        }}
+                        disabled={updateLead.isPending}
+                      />
+                    </div>
+
+                    {/* Comments */}
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        Comments
+                      </p>
+                      <Textarea
+                        className="text-xs min-h-[70px] resize-none"
+                        placeholder="Add any comments..."
+                        defaultValue={lead.comments ?? ""}
+                        key={`cm-${lead._id}-${lead.updatedAt}`}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (lead.comments ?? "")) {
+                            updateLead.mutate({ id: lead._id, data: { comments: val || null } });
+                          }
+                        }}
+                        disabled={updateLead.isPending}
+                      />
                     </div>
 
                     {/* Assign to team member — only team leaders / super admin, only if lead has a team */}
@@ -1204,6 +1314,11 @@ export default function LeadDetailPage() {
             leadId={lead._id}
             reminders={lead.reminders ?? []}
             canEdit={canEdit}
+          />
+          <CallsPanel
+            leadId={lead._id}
+            phone={lead.phone ?? ""}
+            leadName={lead.name}
           />
           {/* <AiChatPanel contextType="lead" contextId={lead._id} /> */}
         </motion.div>

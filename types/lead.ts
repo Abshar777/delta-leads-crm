@@ -89,9 +89,12 @@ export interface Lead {
   callCount?: number;
   platform?: string;
   campaign?: string;
+  leadReceivedTime?: string | null;
   lastFollowupDate?: string | null;
-  demoScheduled?: boolean;
-  demoAttended?: boolean;
+  demoScheduled?: boolean | null;
+  demoAttended?: boolean | null;
+  exactConcern?: string | null;
+  comments?: string | null;
   firstContactTime?: string | null;
   initialLeadResponse?: InitialLeadResponse | null;
   primaryConcern?: PrimaryConcern | null;
