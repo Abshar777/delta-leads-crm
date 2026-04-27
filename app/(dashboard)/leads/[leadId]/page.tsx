@@ -46,6 +46,7 @@ import { ReminderPanel } from "@/components/leads/ReminderPanel";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import { PaymentPanel } from "@/components/leads/PaymentPanel";
 import { CallsPanel } from "@/components/leads/CallsPanel";
+import { ClickToCall } from "@/components/leads/ClickToCall";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
@@ -84,9 +85,7 @@ function StatusBadge({ status }: { status: LeadStatus }) {
   );
 }
 
-const THREECX_URL = "https://deltainstitutions.3cx.ae:5002";
-
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
+function InfoRow({ icon: Icon, label, value, leadId, leadName }: { icon: React.ElementType; label: string; value?: string | null; leadId?: string; leadName?: string }) {
   if (!value) return null;
   const isPhone = label === "Phone";
   return (
@@ -99,18 +98,14 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-foreground break-all">{value}</p>
           {isPhone && (
-            <motion.a
-              href={`${THREECX_URL}/#/make-call/${value.replace(/\s+/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-400 border border-green-500/20 hover:bg-green-500/25 transition-colors shrink-0"
-              title="Call via 3CX"
-            >
-              <Phone className="h-3 w-3" />
-              Call
-            </motion.a>
+            <ClickToCall
+              phoneNumber={value}
+              leadId={leadId}
+              leadName={leadName}
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 shrink-0"
+            />
           )}
         </div>
       </div>
@@ -558,7 +553,7 @@ export default function LeadDetailPage() {
 
               <CardContent className="space-y-4">
                 <InfoRow icon={Mail} label="Email" value={lead.email} />
-                <InfoRow icon={Phone} label="Phone" value={lead.phone} />
+                <InfoRow icon={Phone} label="Phone" value={lead.phone} leadId={lead._id} leadName={lead.name} />
                 <InfoRow icon={Globe} label="Source" value={lead.source} />
                 {lead.campaign && (
                   <InfoRow icon={TrendingUp} label="Campaign" value={lead.campaign} />

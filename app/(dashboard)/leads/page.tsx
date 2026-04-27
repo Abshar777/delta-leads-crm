@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
+import { ClickToCall } from "@/components/leads/ClickToCall";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -1215,16 +1216,11 @@ function LeadsPageContent() {
                             {/* Actions */}
                             <div className="flex items-center gap-0.5 shrink-0">
                               {lead.phone && (
-                                <motion.a
-                                  href={`${THREECX_URL}/#/make-call/${lead.phone.replace(/\s+/g, "")}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  whileTap={{ scale: 0.95 }}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-green-400 hover:bg-green-500/10 transition-colors"
-                                  title={`Call ${lead.phone}`}
-                                >
-                                  <Phone className="h-4 w-4" />
-                                </motion.a>
+                                <ClickToCall
+                                  phoneNumber={lead.phone}
+                                  leadId={lead._id}
+                                  leadName={lead.name}
+                                />
                               )}
                               <Link href={`/leads/${lead._id}`}>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View">
@@ -1288,16 +1284,12 @@ function LeadsPageContent() {
                               <td className="px-4 py-4">
                                 <div className="flex items-center justify-end gap-1">
                                   {lead.phone && (
-                                    <motion.a
-                                      href={`${THREECX_URL}/#/make-call/${lead.phone.replace(/\s+/g, "")}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      whileTap={{ scale: 0.95 }}
-                                      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-green-400 hover:bg-green-500/10 md:opacity-0 group-hover:opacity-100 transition-all"
-                                      title={`Call ${lead.phone}`}
-                                    >
-                                      <Phone className="h-4 w-4" />
-                                    </motion.a>
+                                    <ClickToCall
+                                      phoneNumber={lead.phone}
+                                      leadId={lead._id}
+                                      leadName={lead.name}
+                                      className="md:opacity-0 group-hover:opacity-100"
+                                    />
                                   )}
                                   <Link href={`/leads/${lead._id}`}>
                                     <Button

@@ -12,8 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useLeadCalls, fmtDuration, fmtCallTime } from "@/hooks/useCalls";
 import type { CallLog } from "@/hooks/useCalls";
-
-const THREECX_URL = "https://deltainstitutions.3cx.ae:5002";
+import { ClickToCall } from "@/components/leads/ClickToCall";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -131,8 +130,6 @@ export function CallsPanel({ leadId, phone, leadName }: CallsPanelProps) {
   const totalDur  = calls.reduce((sum, c) => sum + (c.duration ?? 0), 0);
   const hasRec    = calls.filter((c) => c.recordingUrl).length;
 
-  const clickToCall = `${THREECX_URL}/#/make-call/${phone.replace(/\s+/g, "")}`;
-
   return (
     <Card className="border-border">
       <CardHeader className="pb-3">
@@ -142,17 +139,14 @@ export function CallsPanel({ leadId, phone, leadName }: CallsPanelProps) {
             Call History
           </CardTitle>
           <div className="flex items-center gap-2">
-            <motion.a
-              href={clickToCall}
-              target="_blank"
-              rel="noopener noreferrer"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-green-500/15 px-3 py-1.5 text-xs font-semibold text-green-400 border border-green-500/25 hover:bg-green-500/25 transition-colors"
-            >
-              <Phone className="h-3.5 w-3.5" />
-              Call {leadName ?? phone}
-            </motion.a>
+            <ClickToCall
+              phoneNumber={phone}
+              leadId={leadId}
+              leadName={leadName}
+              variant="outline"
+              size="sm"
+              showLabel={true}
+            />
             <Button
               variant="ghost" size="icon"
               className="h-7 w-7"
