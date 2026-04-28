@@ -81,6 +81,41 @@ export const useUserLeadStats = (userId: string) => {
   });
 };
 
+export type RevenuePeriod = "today" | "week" | "month" | "year" | "custom" | "all";
+
+export interface UserRevenueData {
+  totalRevenue: number;
+  paymentCount: number;
+  leadCount: number;
+  period: string;
+  dateFrom: string;
+  dateTo: string;
+}
+
+export const useUserRevenue = (
+  userId: string,
+  period: RevenuePeriod,
+  from?: string,
+  to?: string,
+) => {
+  return useQuery({
+    queryKey: [...LEADS_KEY, "revenue", userId, period, from, to],
+    queryFn: async () => {
+      const params: Record<string, string> = { period };
+      if (period === "custom" && from && to) {
+        params.from = from;
+        params.to   = to;
+      }
+      const response = await api.get<ApiResponse<UserRevenueData>>(
+        `/users/${userId}/revenue`,
+        { params },
+      );
+      return response.data.data!;
+    },
+    enabled: !!userId,
+  });
+};
+
 // ─── Lead Mutations ───────────────────────────────────────────────────────────
 
 export const useCreateLead = () => {

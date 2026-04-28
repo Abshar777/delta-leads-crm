@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "@/hooks/useUsers";
 import { useUserLeads, useUserLeadStats } from "@/hooks/useLeads";
+import { RevenueCard } from "@/components/leads/RevenueCard";
 import { formatDate, getInitials } from "@/lib/utils";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { LeadsDateFilter, TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -394,6 +395,15 @@ export default function UserDetailPage() {
             </motion.div>
           );
         })}
+      </motion.div>
+
+      {/* Revenue Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <RevenueCard userId={userId} />
       </motion.div>
 
       {/* Leads Table */}
