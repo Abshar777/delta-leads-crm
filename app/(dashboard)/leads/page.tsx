@@ -6,6 +6,7 @@ import {
   X, Upload, FileText, ChevronDown, ExternalLink, AlertTriangle,
   CalendarDays, Filter, Tags, ArrowRightLeft, CheckSquare, Square,
   LayoutGrid, List, Columns3, GripVertical, Phone, History,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -147,6 +148,8 @@ function LeadsPageContent() {
   const [demoAttended, setDemoAttended] = useState<string>(() => searchParams.get("demoAttended") ?? "all");
   const [followupFrom, setFollowupFrom] = useState<string>(() => searchParams.get("followupFrom") ?? "");
   const [followupTo, setFollowupTo] = useState<string>(() => searchParams.get("followupTo") ?? "");
+  const [sortBy, setSortBy] = useState<string>(() => searchParams.get("sortBy") ?? "createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() => (searchParams.get("sortOrder") as "asc" | "desc") ?? "desc");
   const [showFilters, setShowFilters] = useState(() => {
     // Auto-open filters panel if any filter param is present in URL
     const sp = searchParams;
@@ -448,8 +451,10 @@ function LeadsPageContent() {
     if (demoAttended !== "all") params.set("demoAttended", demoAttended);
     if (followupFrom) params.set("followupFrom", followupFrom);
     if (followupTo) params.set("followupTo", followupTo);
+    if (sortBy !== "createdAt") params.set("sortBy", sortBy);
+    if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo]);
+  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -507,6 +512,12 @@ function LeadsPageContent() {
     setPage(1);
   }
 
+  function applySort(by: string, order: "asc" | "desc") {
+    setSortBy(by);
+    setSortOrder(order);
+    setPage(1);
+  }
+
   function todayISO() { return new Date().toISOString().slice(0, 10); }
   const isTodayActive = dateFrom === todayISO() && dateTo === todayISO();
   function applyToday() {
@@ -531,7 +542,9 @@ function LeadsPageContent() {
     ...(demoAttended !== "all" ? { demoAttended } : {}),
     ...(followupFrom ? { followupFrom } : {}),
     ...(followupTo ? { followupTo } : {}),
-  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo]);
+    sortBy,
+    sortOrder,
+  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
 
   const { data, isLoading, isFetching } = useLeads(filters);
   const { data: usersData } = useUsers({ status: "active", limit: "200" });
@@ -712,6 +725,46 @@ function LeadsPageContent() {
                     </span>
                   )}
                 </Button>
+
+                {/* Sort */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Sort</span>
+                      {sortBy !== "createdAt" || sortOrder !== "desc" ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      ) : null}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <div className="px-2 py-1.5">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sort by</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    {[
+                      { label: "Created Date",       value: "createdAt" },
+                      { label: "Last Follow-up Date", value: "lastFollowupDate" },
+                    ].map((opt) => (
+                      <div key={opt.value}>
+                        <DropdownMenuItem
+                          className={`text-xs flex items-center justify-between ${sortBy === opt.value && sortOrder === "desc" ? "text-primary" : ""}`}
+                          onClick={() => applySort(opt.value, "desc")}
+                        >
+                          <span>{opt.label} — Newest</span>
+                          {sortBy === opt.value && sortOrder === "desc" && <ArrowDown className="h-3 w-3 text-primary" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className={`text-xs flex items-center justify-between ${sortBy === opt.value && sortOrder === "asc" ? "text-primary" : ""}`}
+                          onClick={() => applySort(opt.value, "asc")}
+                        >
+                          <span>{opt.label} — Oldest</span>
+                          {sortBy === opt.value && sortOrder === "asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                        </DropdownMenuItem>
+                      </div>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* Column visibility + reorder */}
                 <DropdownMenu>
@@ -1355,7 +1408,7 @@ function LeadsPageContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {[10, 25, 50, 100].map((n) => (
+                        {[10, 25, 50, 100, 200, 300].map((n) => (
                           <SelectItem key={n} value={String(n)} className="text-xs">{n} / page</SelectItem>
                         ))}
                       </SelectContent>

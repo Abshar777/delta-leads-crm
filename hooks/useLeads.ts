@@ -32,6 +32,8 @@ export const useLeads = (filters?: LeadFilters) => {
       if (filters?.course)     params.course     = filters.course;
       if (filters?.dateFrom)   params.dateFrom   = filters.dateFrom;
       if (filters?.dateTo)     params.dateTo     = filters.dateTo;
+      if (filters?.sortBy)     params.sortBy     = filters.sortBy;
+      if (filters?.sortOrder)  params.sortOrder  = filters.sortOrder;
       const response = await api.get<ApiResponse<Lead[]>>("/leads", { params });
       return { data: response.data.data ?? [], pagination: response.data.pagination };
     },
