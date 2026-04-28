@@ -243,6 +243,7 @@ function UsersPageContent() {
                       <th className="px-6 py-3 text-left">Role</th>
                       <th className="px-6 py-3 text-left hidden md:table-cell">Team</th>
                       <th className="px-6 py-3 text-left hidden lg:table-cell">Designation</th>
+                      <th className="px-6 py-3 text-left hidden xl:table-cell">Ext.</th>
                       <th className="px-6 py-3 text-left">Status</th>
                       <th className="px-6 py-3 text-left hidden xl:table-cell">Created</th>
                       {(canEdit || canDelete) && (
@@ -290,6 +291,15 @@ function UsersPageContent() {
                           <span className="text-sm text-muted-foreground">
                             {user.designation || "—"}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 hidden xl:table-cell">
+                          {user.extension ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-mono font-medium text-primary">
+                              #{user.extension}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50">—</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <Badge variant={user.status === "active" ? "success" : "secondary"}>

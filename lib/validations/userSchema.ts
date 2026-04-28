@@ -13,6 +13,7 @@ export const createUserSchema = z.object({
   password: passwordSchema,
   role: z.string().min(1, "Role is required"),
   designation: z.string().max(100).optional(),
+  extension: z.string().max(20).optional().nullable(),
   status: z.enum(["active", "inactive"]).default("active"),
 });
 
@@ -22,6 +23,7 @@ export const updateUserSchema = z.object({
   password: passwordSchema.optional().or(z.literal("")),
   role: z.string().min(1, "Role is required").optional(),
   designation: z.string().max(100).optional(),
+  extension: z.string().max(20).optional().nullable(),
   status: z.enum(["active", "inactive"]).optional(),
 });
 

@@ -199,6 +199,9 @@ export default function ProfilePage() {
                 <InfoChip icon={Mail}     value={user.email} />
                 <InfoChip icon={Shield}   value={roleName} />
                 <InfoChip icon={Calendar} value={`Joined ${formatDate(user.createdAt)}`} />
+                {user.extension && (
+                  <InfoChip icon={Phone} value={`Ext. ${user.extension}`} />
+                )}
               </div>
               {!statsLoading && stats && stats.total > 0 && (
                 <div className="pt-2">

@@ -58,6 +58,7 @@ export interface User {
   email: string;
   role: Role | string;
   designation?: string;
+  extension?: string | null;   // 3CX phone extension e.g. "101"
   status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
@@ -70,6 +71,7 @@ export interface AuthUser {
   email: string;
   role: Role;
   designation?: string;
+  extension?: string | null;
   status: "active" | "inactive";
 }
 

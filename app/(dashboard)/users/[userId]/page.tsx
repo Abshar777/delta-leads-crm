@@ -322,9 +322,12 @@ export default function UserDetailPage() {
               </div>
 
               <div className="flex flex-wrap gap-x-5 gap-y-2">
-                <InfoChip icon={Mail} value={user.email} />
-                <InfoChip icon={Shield} value={roleName} />
+                <InfoChip icon={Mail}     value={user.email} />
+                <InfoChip icon={Shield}   value={roleName} />
                 <InfoChip icon={Calendar} value={`Joined ${formatDate(user.createdAt)}`} />
+                {user.extension && (
+                  <InfoChip icon={Phone} value={`Ext. ${user.extension}`} />
+                )}
               </div>
 
               {/* Performance bar */}

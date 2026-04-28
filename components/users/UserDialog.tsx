@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Phone } from "lucide-react";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -49,6 +49,7 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
       password: "",
       role: "",
       designation: "",
+      extension: "",
       status: "active",
     },
   });
@@ -62,10 +63,11 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
           password: "",
           role: typeof user.role === "object" ? user.role._id : user.role,
           designation: user.designation ?? "",
+          extension: user.extension ?? "",
           status: user.status,
         });
       } else {
-        reset({ name: "", email: "", password: "", role: "", designation: "", status: "active" });
+        reset({ name: "", email: "", password: "", role: "", designation: "", extension: "", status: "active" });
       }
     }
   }, [open, user, reset]);
@@ -178,10 +180,24 @@ export function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               />
             </div>
 
-            {/* Designation */}
-            <div className="col-span-2 space-y-1.5">
+            {/* Designation + Extension */}
+            <div className="space-y-1.5">
               <Label htmlFor="designation">Designation</Label>
               <Input id="designation" placeholder="e.g. Sales Manager" {...register("designation")} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="extension" className="flex items-center gap-1.5">
+                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                3CX Extension
+              </Label>
+              <Input
+                id="extension"
+                placeholder="e.g. 101"
+                className="font-mono"
+                {...register("extension")}
+              />
+              {errors.extension && <p className="text-xs text-destructive">{errors.extension.message}</p>}
             </div>
           </div>
 

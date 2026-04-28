@@ -20,6 +20,7 @@ import {
   Bell,
   Settings,
   GraduationCap,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/store/uiStore";
@@ -43,6 +44,7 @@ import { getSocket } from "@/lib/socket";
 export const navItems: { href: string; label: string; icon: React.ElementType; permModule: string | null }[] = [
   { href: "/dashboard", label: "Dashboard",          icon: LayoutDashboard, permModule: "dashboard" },
   { href: "/leads",     label: "Leads",              icon: FileText,        permModule: "leads"     },
+  { href: "/calls",     label: "Calls",              icon: PhoneCall,       permModule: "leads"     },
   { href: "/reminders", label: "Reminders",          icon: Bell,            permModule: "reminders" },
   { href: "/teams",     label: "Teams",              icon: UsersRound,      permModule: "teams"     },
   { href: "/courses",   label: "Courses",            icon: BookOpen,        permModule: "courses"   },
