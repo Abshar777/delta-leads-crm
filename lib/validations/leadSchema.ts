@@ -12,6 +12,7 @@ const baseLeadFields = z.object({
   lastFollowupDate: z.string().optional().nullable(),
   demoScheduled:   z.boolean().optional().nullable(),
   demoAttended:    z.boolean().optional().nullable(),
+  hasWhatsapp:     z.boolean().optional().nullable(),
   exactConcern:    z.string().max(1000).optional().nullable(),
   comments:        z.string().max(2000).optional().nullable(),
   // Lead insight fields — edited inline on the detail page

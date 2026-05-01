@@ -6,7 +6,7 @@ import {
   X, Upload, FileText, ChevronDown, ExternalLink, AlertTriangle,
   CalendarDays, Filter, Tags, ArrowRightLeft, CheckSquare, Square,
   LayoutGrid, List, Columns3, GripVertical, Phone, History,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  ArrowUpDown, ArrowUp, ArrowDown, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -301,7 +301,23 @@ function LeadsPageContent() {
         <td key="contact" className="px-4 py-4">
           <div className="space-y-0.5">
             {lead.email && <p className="text-sm text-muted-foreground">{lead.email}</p>}
-            {lead.phone && <p className="text-xs text-muted-foreground/70">{lead.phone}</p>}
+            {lead.phone && (
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs text-muted-foreground/70">{lead.phone}</p>
+                {lead.hasWhatsapp && (
+                  <a
+                    href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Open WhatsApp"
+                    className="text-green-500 hover:text-green-600 transition-colors"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 fill-green-500/20" />
+                  </a>
+                )}
+              </div>
+            )}
             {!lead.email && !lead.phone && <span className="text-sm text-muted-foreground/50">—</span>}
           </div>
         </td>

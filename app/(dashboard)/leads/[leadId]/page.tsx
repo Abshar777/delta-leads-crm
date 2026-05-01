@@ -9,6 +9,7 @@ import {
   X, ChevronDown, Activity, Clock, UserCheck, FilePlus2,
   MessageSquarePlus, PencilLine, Minus, UsersRound, ArrowRightLeft, BookOpen,
   PhoneOff, Plus, MessageSquare, AlertTriangle, Target, TrendingUp, CircleDollarSign,
+  MessageCircle,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -85,7 +86,7 @@ function StatusBadge({ status }: { status: LeadStatus }) {
   );
 }
 
-function InfoRow({ icon: Icon, label, value, leadId, leadName }: { icon: React.ElementType; label: string; value?: string | null; leadId?: string; leadName?: string }) {
+function InfoRow({ icon: Icon, label, value, leadId, leadName, hasWhatsapp }: { icon: React.ElementType; label: string; value?: string | null; leadId?: string; leadName?: string; hasWhatsapp?: boolean }) {
   if (!value) return null;
   const isPhone = label === "Phone";
   return (
@@ -106,6 +107,17 @@ function InfoRow({ icon: Icon, label, value, leadId, leadName }: { icon: React.E
               variant="ghost"
               className="h-7 w-7 shrink-0"
             />
+          )}
+          {isPhone && hasWhatsapp && (
+            <a
+              href={`https://wa.me/${value.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open WhatsApp"
+              className="text-green-500 hover:text-green-600 transition-colors"
+            >
+              <MessageCircle className="h-4 w-4 fill-green-500/20" />
+            </a>
           )}
         </div>
       </div>
@@ -553,7 +565,7 @@ export default function LeadDetailPage() {
 
               <CardContent className="space-y-4">
                 <InfoRow icon={Mail} label="Email" value={lead.email} />
-                <InfoRow icon={Phone} label="Phone" value={lead.phone} leadId={lead._id} leadName={lead.name} />
+                <InfoRow icon={Phone} label="Phone" value={lead.phone} leadId={lead._id} leadName={lead.name} hasWhatsapp={lead.hasWhatsapp} />
                 <InfoRow icon={Globe} label="Source" value={lead.source} />
                 {lead.campaign && (
                   <InfoRow icon={TrendingUp} label="Campaign" value={lead.campaign} />

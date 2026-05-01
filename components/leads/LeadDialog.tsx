@@ -2,7 +2,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageCircle } from "lucide-react";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -101,13 +101,14 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
             : "",
           demoScheduled:   lead.demoScheduled ?? false,
           demoAttended:    lead.demoAttended ?? false,
+          hasWhatsapp:     lead.hasWhatsapp ?? false,
           sellingAmount:   lead.sellingAmount ?? null,
           course: (typeof lead.course === "object" && lead.course !== null)
             ? (lead.course as { _id: string })._id
             : (lead.course as string | null | undefined) ?? "",
         } as UpdateLeadFormValues as never);
       } else {
-        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, sellingAmount: null, course: "", team: "", assignedTo: "" });
+        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, hasWhatsapp: true, sellingAmount: null, course: "", team: "", assignedTo: "" });
       }
     }
   }, [open, lead, reset]);
@@ -165,11 +166,29 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
 
-            {/* Phone */}
+            {/* Phone + WhatsApp toggle */}
             <div className="space-y-1.5">
               <Label htmlFor="lead-phone">Phone *</Label>
               <Input id="lead-phone" placeholder="+91 98765 43210" {...register("phone")} />
               {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+              <Controller
+                name={"hasWhatsapp" as never}
+                control={control}
+                render={({ field }: { field: { value: boolean; onChange: (v: boolean) => void } }) => (
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(!field.value)}
+                    className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                      field.value
+                        ? "border-green-500/40 bg-green-500/10 text-green-600 dark:text-green-400"
+                        : "border-border bg-muted text-muted-foreground hover:border-green-500/30 hover:text-green-600"
+                    }`}
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    {field.value ? "Has WhatsApp" : "No WhatsApp"}
+                  </button>
+                )}
+              />
             </div>
 
             {/* Source */}
