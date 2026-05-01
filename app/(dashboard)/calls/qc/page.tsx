@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Play, Pause, CheckCircle2, Flag, Clock,
   PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed,
-  User, RefreshCw, ChevronDown, MessageSquare, Shield,
+  User, RefreshCw, ChevronDown, MessageSquare, Shield, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -204,13 +204,20 @@ function QcCard({ call, index }: { call: RecentCallLog; index: number }) {
           </div>
         </div>
 
-        {/* Recording + expand */}
+        {/* Recording + view + expand */}
         <div className="flex items-center gap-2 shrink-0">
           {call.recordingUrl && (
             <div onClick={(e) => e.stopPropagation()}>
               <RecordingPlayer url={call.recordingUrl} />
             </div>
           )}
+          <div onClick={(e) => e.stopPropagation()}>
+            <Link href={`/calls/${call._id}`}>
+              <Button size="icon" variant="ghost" className="h-7 w-7" title="View call details">
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            </Link>
+          </div>
           <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </motion.div>

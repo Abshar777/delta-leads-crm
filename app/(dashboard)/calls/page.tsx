@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed,
   Clock, Play, Pause, RefreshCw, Search, Filter,
-  Phone, User, X,
+  Phone, User, X, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -181,6 +181,22 @@ function CallRow({ call, index }: { call: RecentCallLog; index: number }) {
           ? <RecordingPlayer url={call.recordingUrl} />
           : <span className="text-[11px] text-muted-foreground/40">—</span>
         }
+      </td>
+
+      {/* View */}
+      <td className="px-4 py-3">
+        <Link href={`/calls/${call._id}`}>
+          <motion.div whileTap={{ scale: 0.95 }}>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="View call details"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </motion.div>
+        </Link>
       </td>
     </motion.tr>
   );
@@ -423,6 +439,7 @@ export default function CallsPage() {
                       <th className="px-4 py-2.5 text-left font-medium hidden md:table-cell">Duration</th>
                       <th className="px-4 py-2.5 text-left font-medium hidden lg:table-cell">Agent</th>
                       <th className="px-4 py-2.5 text-left font-medium">Recording</th>
+                      <th className="px-4 py-2.5 text-left font-medium w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
