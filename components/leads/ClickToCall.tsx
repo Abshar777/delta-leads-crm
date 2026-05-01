@@ -62,9 +62,33 @@ export function ClickToCall({
   async function handleWebClient() {
     setIsDialing(true);
     await logCall();
-    window.open(`${THREECX_URL}/#/call?phone=${encodeURIComponent(clean)}`, "_blank");
-    toast.success(`Opening 3CX to call ${leadName || phoneNumber}…`, {
-      description: 'Click "Call" in the 3CX window that opens',
+
+    const url = `${THREECX_URL}/#/call?phone=${encodeURIComponent(clean)}`;
+    const features = [
+      "width=440",
+      "height=680",
+      `left=${Math.round(window.screenX + (window.outerWidth - 440) / 2)}`,
+      `top=${Math.round(window.screenY + (window.outerHeight - 680) / 2)}`,
+      "resizable=yes",
+      "scrollbars=yes",
+      "toolbar=no",
+      "menubar=no",
+      "location=no",
+      "status=no",
+    ].join(",");
+
+    const popup = window.open(url, "3cx-popup", features);
+
+    // If popup already open, just focus it
+    if (popup) {
+      popup.focus();
+    } else {
+      // Popup blocked — fall back to new tab
+      window.open(url, "_blank");
+    }
+
+    toast.success(`Calling ${leadName || phoneNumber} via 3CX…`, {
+      description: popup ? "3CX popup opened — click Call to connect" : 'Allow popups for this site to use the 3CX popup',
       duration: 4000,
     });
     setTimeout(() => setIsDialing(false), 2000);
