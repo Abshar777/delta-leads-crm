@@ -32,7 +32,7 @@ import { LeadDialog } from "@/components/leads/LeadDialog";
 import { DeleteLeadDialog } from "@/components/leads/DeleteLeadDialog";
 import { AssignLeadDialog } from "@/components/leads/AssignLeadDialog";
 import { KanbanBoard } from "@/components/leads/KanbanBoard";
-import { useLeads, useUpdateLeadStatus, useBulkUpdateLeadStatus, useBulkDeleteLeads, useBulkAssignLeadsToTeam, useUpdateLead } from "@/hooks/useLeads";
+import { useLeads, useLeadSources, useUpdateLeadStatus, useBulkUpdateLeadStatus, useBulkDeleteLeads, useBulkAssignLeadsToTeam, useUpdateLead } from "@/hooks/useLeads";
 import { useAllCourses } from "@/hooks/useCourses";
 import { useUsers } from "@/hooks/useUsers";
 import { useTeams } from "@/hooks/useTeams";
@@ -148,12 +148,13 @@ function LeadsPageContent() {
   const [demoAttended, setDemoAttended] = useState<string>(() => searchParams.get("demoAttended") ?? "all");
   const [followupFrom, setFollowupFrom] = useState<string>(() => searchParams.get("followupFrom") ?? "");
   const [followupTo, setFollowupTo] = useState<string>(() => searchParams.get("followupTo") ?? "");
+  const [source, setSource] = useState<string>(() => searchParams.get("source") ?? "all");
   const [sortBy, setSortBy] = useState<string>(() => searchParams.get("sortBy") ?? "createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() => (searchParams.get("sortOrder") as "asc" | "desc") ?? "desc");
   const [showFilters, setShowFilters] = useState(() => {
     // Auto-open filters panel if any filter param is present in URL
     const sp = searchParams;
-    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom"));
+    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom") || sp.get("source"));
   });
 
   // ── View mode — synced to ?view= URL param ────────────────────────────────────
@@ -445,6 +446,7 @@ function LeadsPageContent() {
     if (reporter !== "all") params.set("reporter", reporter);
     if (courseId !== "all") params.set("course", courseId);
     if (teamId !== "all") params.set("team", teamId);
+    if (source !== "all") params.set("source", source);
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
     if (demoScheduled !== "all") params.set("demoScheduled", demoScheduled);
@@ -454,7 +456,7 @@ function LeadsPageContent() {
     if (sortBy !== "createdAt") params.set("sortBy", sortBy);
     if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
+  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, source, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -479,7 +481,7 @@ function LeadsPageContent() {
   const { mutate: updateLeadField } = useUpdateLead();
 
   // Clear selection when page/filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, demoScheduled, demoAttended, followupFrom, followupTo]);
+  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, source, demoScheduled, demoAttended, followupFrom, followupTo]);
 
   const toggleId = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -536,6 +538,7 @@ function LeadsPageContent() {
     ...(reporter !== "all" ? { reporter } : {}),
     ...(courseId !== "all" ? { course: courseId } : {}),
     ...(teamId !== "all" ? { team: teamId } : {}),
+    ...(source !== "all" ? { source } : {}),
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
     ...(demoScheduled !== "all" ? { demoScheduled } : {}),
@@ -544,12 +547,13 @@ function LeadsPageContent() {
     ...(followupTo ? { followupTo } : {}),
     sortBy,
     sortOrder,
-  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
+  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, source, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
 
   const { data, isLoading, isFetching } = useLeads(filters);
   const { data: usersData } = useUsers({ status: "active", limit: "200" });
   const { data: teamsData } = useTeams({ status: "active", limit: 100 });
   const { data: allCourses = [] } = useAllCourses();
+  const { data: allSources = [] } = useLeadSources();
 
   const leads = data?.data ?? [];
   const pagination = data?.pagination;
@@ -588,6 +592,7 @@ function LeadsPageContent() {
     reporter !== "all",
     courseId !== "all",
     teamId !== "all",
+    source !== "all",
     !!dateFrom,
     !!dateTo,
     demoScheduled !== "all",
@@ -605,6 +610,7 @@ function LeadsPageContent() {
     setReporter("all");
     setCourseId("all");
     setTeamId("all");
+    setSource("all");
     setDateFrom("");
     setDateTo("");
     setDemoScheduled("all");
@@ -995,6 +1001,22 @@ function LeadsPageContent() {
                       </div>
                     )}
 
+                    {/* Source */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Source</p>
+                      <Select value={source} onValueChange={(v) => applyFilter(setSource, v)}>
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="All Sources" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="all">All Sources</SelectItem>
+                          {allSources.map((s) => (
+                            <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="md:block hidden"></div>
                     <div className="space-y-2 ">
                       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -1108,6 +1130,12 @@ function LeadsPageContent() {
                     onRemove={() => applyFilter(setTeamId, "all")}
                   />
                 )}
+                {source !== "all" && (
+                  <FilterPill
+                    label={`Source: ${source}`}
+                    onRemove={() => applyFilter(setSource, "all")}
+                  />
+                )}
                 {dateFrom && (
                   <FilterPill label={`From: ${dateFrom}`} onRemove={() => { setDateFrom(""); setPage(1); }} />
                 )}
@@ -1141,6 +1169,7 @@ function LeadsPageContent() {
                   ...(reporter !== "all" ? { reporter } : {}),
                   ...(courseId !== "all" ? { course: courseId } : {}),
                   ...(teamId !== "all" ? { team: teamId } : {}),
+                  ...(source !== "all" ? { source } : {}),
                   ...(dateFrom ? { dateFrom } : {}),
                   ...(dateTo ? { dateTo } : {}),
                 }}

@@ -112,6 +112,7 @@ export interface LeadFilters {
   team?: string;
   reporter?: string;
   course?: string;
+  source?: string;
   campaignId?: string;
   demoScheduled?: string;
   demoAttended?: string;

@@ -34,9 +34,21 @@ export const useLeads = (filters?: LeadFilters) => {
       if (filters?.dateTo)     params.dateTo     = filters.dateTo;
       if (filters?.sortBy)     params.sortBy     = filters.sortBy;
       if (filters?.sortOrder)  params.sortOrder  = filters.sortOrder;
+      if (filters?.source)     params.source     = filters.source;
       const response = await api.get<ApiResponse<Lead[]>>("/leads", { params });
       return { data: response.data.data ?? [], pagination: response.data.pagination };
     },
+  });
+};
+
+export const useLeadSources = () => {
+  return useQuery({
+    queryKey: ["lead-sources"],
+    queryFn: async () => {
+      const response = await api.get<ApiResponse<string[]>>("/leads/sources");
+      return response.data.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000, // cache for 5 min
   });
 };
 
