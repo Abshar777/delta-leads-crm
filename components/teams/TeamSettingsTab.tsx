@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings, Shuffle, Users, CheckCircle2, Loader2, RefreshCw, Info } from "lucide-react";
+import { Settings, Shuffle, Users, CheckCircle2, Loader2, RefreshCw, Info, Clock, CalendarDays, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useTeamSettings, useUpdateTeamSettings } from "@/hooks/useTeams";
 import type { Team } from "@/types/team";
 import type { User } from "@/types";
@@ -31,9 +32,11 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
   const { data: settings, isLoading } = useTeamSettings(teamId);
   const { mutate: save, isPending: saving } = useUpdateTeamSettings(teamId);
 
-  const [autoAssign, setAutoAssign]       = useState(false);
-  const [splitMode, setSplitMode]         = useState<"round_robin" | "equal_load">("round_robin");
-  const [includedMembers, setIncluded]    = useState<string[]>([]);
+  const [autoAssign, setAutoAssign]           = useState(false);
+  const [splitMode, setSplitMode]             = useState<"round_robin" | "equal_load">("round_robin");
+  const [includedMembers, setIncluded]        = useState<string[]>([]);
+  const [splitTime, setSplitTime]             = useState<string>("");
+  const [roundRobinStartDate, setStartDate]   = useState<string>("");
 
   // All members pool (leaders + members, deduped)
   const allMembers: User[] = [
@@ -46,6 +49,12 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
     setAutoAssign(settings.autoAssign ?? false);
     setSplitMode(settings.splitMode ?? "round_robin");
     setIncluded(settings.includedMembers ?? []);
+    setSplitTime(settings.splitTime ?? "");
+    setStartDate(
+      settings.roundRobinStartDate
+        ? settings.roundRobinStartDate.slice(0, 10)
+        : "",
+    );
   }, [settings]);
 
   function toggleMember(id: string) {
@@ -53,7 +62,13 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
   }
 
   function handleSave() {
-    save({ autoAssign, splitMode, includedMembers });
+    save({
+      autoAssign,
+      splitMode,
+      includedMembers,
+      splitTime: splitTime || null,
+      roundRobinStartDate: roundRobinStartDate || null,
+    });
   }
 
   if (isLoading) {
@@ -161,6 +176,99 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
                   </motion.button>
                 );
               })}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Scheduled split time */}
+      {autoAssign && (
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                  <Clock className="h-4 w-4 text-orange-400" />
+                </div>
+                Daily Auto-Split Time
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                At this time (IST) every day, all unassigned leads in this team will be automatically distributed. Leave blank to disable the scheduled split.
+              </p>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="time"
+                  value={splitTime}
+                  onChange={(e) => isLeaderOrAdmin && setSplitTime(e.target.value)}
+                  disabled={!isLeaderOrAdmin}
+                  className="w-36"
+                />
+                {splitTime && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSplitTime("")}
+                    disabled={!isLeaderOrAdmin}
+                    className="text-xs text-muted-foreground"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {splitTime && (
+                <p className="text-xs text-primary/80">
+                  Leads will be auto-split daily at <span className="font-semibold">{splitTime} IST</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Round-robin start date */}
+      {autoAssign && splitMode === "round_robin" && (
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/10">
+                  <CalendarDays className="h-4 w-4 text-teal-400" />
+                </div>
+                Round-Robin Start Date
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Count each member's leads from this date to determine who receives the next lead in round-robin mode. Set to today to reset fairness from a clean slate.
+              </p>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="date"
+                  value={roundRobinStartDate}
+                  onChange={(e) => isLeaderOrAdmin && setStartDate(e.target.value)}
+                  disabled={!isLeaderOrAdmin}
+                  className="w-44"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStartDate(new Date().toISOString().slice(0, 10))}
+                  disabled={!isLeaderOrAdmin}
+                  className="gap-1.5 text-xs"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset to today
+                </Button>
+              </div>
+              {roundRobinStartDate && (
+                <p className="text-xs text-teal-500/80">
+                  Counting leads from <span className="font-semibold">{roundRobinStartDate}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
         </motion.div>

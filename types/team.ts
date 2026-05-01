@@ -5,6 +5,14 @@ export interface TeamSettings {
   splitMode: "round_robin" | "equal_load";
   roundRobinIndex: number;
   includedMembers: string[];
+  splitTime?: string | null;
+  roundRobinStartDate?: string | null;
+  lastSplitAt?: string | null;
+}
+
+export interface AbsentEntry {
+  userId: string;
+  date: string;
 }
 
 export interface Team {
@@ -16,6 +24,8 @@ export interface Team {
   status: "active" | "inactive";
   /** Member IDs excluded from auto-assignment within this team (team-scoped) */
   inactiveMembers: string[];
+  /** Members absent today (date-scoped, cleared automatically) */
+  absentToday?: AbsentEntry[];
   settings?: TeamSettings;
   leadStats?: {
     teamId: string;

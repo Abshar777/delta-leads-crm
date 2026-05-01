@@ -58,6 +58,7 @@ import {
   ChevronDown,
   ChevronUp,
   Award,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,6 +122,8 @@ import {
   useTeamUpdates,
   usePostTeamMessage,
   useToggleMemberActive,
+  useToggleMemberAbsentToday,
+  useRedistributeToday,
   useTeamRevenue,
   useTeamRevenueTimeline,
   type TeamUpdatesFilters,
@@ -772,6 +775,9 @@ function MembersTab({
   onEditMembers,
   onToggleMemberActive,
   togglingMember,
+  onToggleMemberAbsentToday,
+  onRedistributeToday,
+  redistributing,
 }: {
   team: Team;
   memberStats: TeamMemberStat[] | undefined;
@@ -780,12 +786,34 @@ function MembersTab({
   onEditMembers?: () => void;
   onToggleMemberActive?: (memberId: string) => void;
   togglingMember?: boolean;
+  onToggleMemberAbsentToday?: (memberId: string, absent: boolean) => void;
+  onRedistributeToday?: () => void;
+  redistributing?: boolean;
 }) {
   const leaderIds = new Set((team.leaders ?? []).map((l) => l._id));
   const inactiveMemberIds = useMemo(
     () => new Set(team.inactiveMembers ?? []),
     [team.inactiveMembers],
   );
+
+  // Build absent-today set from team data (matches today's IST date)
+  const absentTodayIds = useMemo(() => {
+    if (!team.absentToday?.length) return new Set<string>();
+    const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const todayStr = `${nowIST.getUTCFullYear()}-${String(nowIST.getUTCMonth() + 1).padStart(2, "0")}-${String(nowIST.getUTCDate()).padStart(2, "0")}`;
+    return new Set(
+      team.absentToday
+        .filter((a) => {
+          const d = new Date(a.date);
+          const dIST = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+          const dStr = `${dIST.getUTCFullYear()}-${String(dIST.getUTCMonth() + 1).padStart(2, "0")}-${String(dIST.getUTCDate()).padStart(2, "0")}`;
+          return dStr === todayStr;
+        })
+        .map((a) => (typeof a.userId === "string" ? a.userId : (a.userId as { _id?: string })._id ?? String(a.userId))),
+    );
+  }, [team.absentToday]);
+
+  const hasAbsentMembers = absentTodayIds.size > 0;
 
   return (
     <div className="space-y-4">
@@ -803,6 +831,29 @@ function MembersTab({
             >
               <UserPlus className="h-3.5 w-3.5" />
               Edit Members
+            </Button>
+          </div>
+        )}
+        {/* Redistribute today's leads banner */}
+        {isLeaderOrAdmin && hasAbsentMembers && team.settings?.autoAssign && (
+          <div className="flex items-center justify-between gap-3 mx-4 mt-4 rounded-xl border border-orange-500/30 bg-orange-500/5 px-4 py-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-7 w-7 shrink-0 flex items-center justify-center rounded-full bg-orange-500/15">
+                <UserX className="h-3.5 w-3.5 text-orange-400" />
+              </div>
+              <p className="text-xs text-orange-300/90">
+                <span className="font-semibold">{absentTodayIds.size}</span> member{absentTodayIds.size !== 1 ? "s are" : " is"} absent today. Today's leads can be redistributed to present members.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 gap-1.5 border-orange-500/40 text-orange-400 hover:bg-orange-500/10 text-xs"
+              onClick={onRedistributeToday}
+              disabled={redistributing}
+            >
+              {redistributing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shuffle className="h-3.5 w-3.5" />}
+              Redistribute
             </Button>
           </div>
         )}
@@ -838,6 +889,9 @@ function MembersTab({
                     <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Conv%</th>
                     {isLeaderOrAdmin && (
                       <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Auto-assign</th>
+                    )}
+                    {isLeaderOrAdmin && (
+                      <th className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">Today</th>
                     )}
                   </tr>
                 </thead>
@@ -948,6 +1002,26 @@ function MembersTab({
                                 )}
                               >
                                 {inactiveMemberIds.has(stat.user._id) ? "Inactive" : "Active"}
+                              </button>
+                            </td>
+                          )}
+                          {isLeaderOrAdmin && (
+                            <td className="px-2 py-2.5 sm:px-4 sm:py-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => onToggleMemberAbsentToday?.(
+                                  stat.user._id,
+                                  !absentTodayIds.has(stat.user._id),
+                                )}
+                                className={cn(
+                                  "rounded-full px-2.5 py-0.5 text-[11px] font-semibold border transition-all",
+                                  absentTodayIds.has(stat.user._id)
+                                    ? "border-orange-500/40 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
+                                    : "border-border/50 bg-muted/30 text-muted-foreground hover:border-orange-500/30 hover:text-orange-400",
+                                )}
+                                title={absentTodayIds.has(stat.user._id) ? "Mark present" : "Mark absent today"}
+                              >
+                                {absentTodayIds.has(stat.user._id) ? "Absent" : "Present"}
                               </button>
                             </td>
                           )}
@@ -3127,6 +3201,8 @@ function TeamDetailPageContent() {
   const { mutate: autoAssign, isPending: assigning } = useAutoAssignTeamLeads(teamId);
   const { mutate: deleteTeam, isPending: deleting } = useDeleteTeam();
   const { mutate: toggleMemberActive, isPending: togglingMember } = useToggleMemberActive(teamId);
+  const { mutate: toggleMemberAbsent } = useToggleMemberAbsentToday(teamId);
+  const { mutate: redistributeToday, isPending: redistributing } = useRedistributeToday(teamId);
 
   // ── Access control ───────────────────────────────────────────────────────────
   const isSuperAdmin =
@@ -3449,6 +3525,9 @@ function TeamDetailPageContent() {
                 onEditMembers={() => setEditMembersOpen(true)}
                 onToggleMemberActive={toggleMemberActive}
                 togglingMember={togglingMember}
+                onToggleMemberAbsentToday={(memberId, absent) => toggleMemberAbsent({ memberId, absent })}
+                onRedistributeToday={redistributeToday}
+                redistributing={redistributing}
               />
             </motion.div>
           )}

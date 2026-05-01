@@ -538,7 +538,13 @@ export const useTeamSettings = (teamId: string) => {
 export const useUpdateTeamSettings = (teamId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (settings: { autoAssign: boolean; splitMode: "round_robin" | "equal_load"; includedMembers: string[] }) => {
+    mutationFn: async (settings: {
+      autoAssign: boolean;
+      splitMode: "round_robin" | "equal_load";
+      includedMembers: string[];
+      splitTime?: string | null;
+      roundRobinStartDate?: string | null;
+    }) => {
       const res = await api.patch<ApiResponse<TeamSettings>>(`/teams/${teamId}/settings`, settings);
       return res.data.data as TeamSettings;
     },
@@ -551,5 +557,43 @@ export const useUpdateTeamSettings = (teamId: string) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Failed to save settings";
       toast.error(msg);
     },
+  });
+};
+
+export const useToggleMemberAbsentToday = (teamId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ memberId, absent }: { memberId: string; absent: boolean }) => {
+      const res = await api.patch<ApiResponse<{ memberId: string; absent: boolean }>>(
+        `/teams/${teamId}/members/${memberId}/absent-today`,
+        { absent },
+      );
+      return res.data.data!;
+    },
+    onSuccess: (data) => {
+      toast.success(data.absent ? "Member marked absent today" : "Member marked present");
+      queryClient.invalidateQueries({ queryKey: [...TEAMS_KEY, teamId] });
+      queryClient.invalidateQueries({ queryKey: [...TEAMS_KEY, teamId, "dashboard"] });
+    },
+    onError: (err: unknown) => toast.error(errMsg(err, "Failed to update absence")),
+  });
+};
+
+export const useRedistributeToday = (teamId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<ApiResponse<{ redistributed: number; absentMembers: number; presentMembers: number }>>(
+        `/teams/${teamId}/redistribute-today`,
+      );
+      return res.data.data!;
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.redistributed} lead${data.redistributed === 1 ? "" : "s"} redistributed to ${data.presentMembers} present member${data.presentMembers === 1 ? "" : "s"}`);
+      queryClient.invalidateQueries({ queryKey: [...TEAMS_KEY, teamId] });
+      queryClient.invalidateQueries({ queryKey: [...TEAMS_KEY, teamId, "leads"] });
+      queryClient.invalidateQueries({ queryKey: [...TEAMS_KEY, teamId, "dashboard"] });
+    },
+    onError: (err: unknown) => toast.error(errMsg(err, "Failed to redistribute leads")),
   });
 };
