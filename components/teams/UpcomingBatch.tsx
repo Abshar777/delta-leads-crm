@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Users, Zap, Phone, Mail, Calendar,
   RefreshCw, Timer, PackageOpen, ChevronDown, ChevronUp,
-  ArrowRight, Inbox,
+  ArrowRight, Inbox, Shuffle, BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
@@ -242,7 +242,7 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
 
   if (!data) return null;
 
-  const { totalUnassigned, splitTime, nextSplitAt, autoAssign, unassignedLeads, previewDistribution } = data;
+  const { totalUnassigned, splitTime, nextSplitAt, autoAssign, splitMode, unassignedLeads, previewDistribution } = data;
 
   // ── Empty state — no split time configured ──
   if (!splitTime || !autoAssign) {
@@ -278,6 +278,7 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
           splitTime={splitTime}
           nextSplitAt={nextSplitAt}
           totalUnassigned={0}
+          splitMode={splitMode}
           canEdit={canEdit}
           splitting={splitting}
           isFetching={isFetching}
@@ -313,6 +314,7 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
         splitTime={splitTime}
         nextSplitAt={nextSplitAt}
         totalUnassigned={totalUnassigned}
+        splitMode={splitMode}
         canEdit={canEdit}
         splitting={splitting}
         isFetching={isFetching}
@@ -425,13 +427,31 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
 
 // ─── Header banner (extracted for reuse) ─────────────────────────────────────
 
+function SplitModeBadge({ mode }: { mode: "round_robin" | "equal_load" }) {
+  if (mode === "equal_load") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-400">
+        <BarChart2 className="h-2.5 w-2.5" />
+        Equal Load
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
+      <Shuffle className="h-2.5 w-2.5" />
+      Round Robin · Source-wise
+    </span>
+  );
+}
+
 function BatchHeader({
-  splitTime, nextSplitAt, totalUnassigned, canEdit,
+  splitTime, nextSplitAt, totalUnassigned, splitMode, canEdit,
   splitting, isFetching, onSplitNow, onRefresh,
 }: {
   splitTime: string;
   nextSplitAt: string | null;
   totalUnassigned: number;
+  splitMode: "round_robin" | "equal_load";
   canEdit: boolean;
   splitting: boolean;
   isFetching: boolean;
@@ -447,7 +467,7 @@ function BatchHeader({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Left — info */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
               <Clock className="h-4 w-4 text-primary" />
             </div>
@@ -462,6 +482,7 @@ function BatchHeader({
                 )}
               </p>
             </div>
+            <SplitModeBadge mode={splitMode} />
           </div>
 
           {/* Countdown */}

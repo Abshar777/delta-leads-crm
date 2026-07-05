@@ -663,6 +663,7 @@ export interface UpcomingBatchData {
   splitTime: string | null;
   nextSplitAt: string | null;
   autoAssign: boolean;
+  splitMode: "round_robin" | "equal_load";
   unassignedLeads: UpcomingBatchLead[];
   previewDistribution: UpcomingBatchMemberPreview[];
 }

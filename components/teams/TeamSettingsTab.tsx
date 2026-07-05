@@ -228,7 +228,7 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
                 {
                   id: "round_robin" as const,
                   label: "Round Robin",
-                  description: "Members take turns receiving leads in rotation",
+                  description: "Members take turns in rotation. Each lead source has its own independent cursor — Google Ads, Meta, and other sources rotate separately so no source steals turns from another.",
                   color: "primary",
                 },
                 {
@@ -462,16 +462,28 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
       {/* Current round-robin position indicator */}
       {autoAssign && splitMode === "round_robin" && settings && (
         <motion.div variants={itemVariants}>
-          <div className="flex items-center gap-2 rounded-xl border border-border/40 bg-muted/20 px-4 py-3">
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
-            <p className="text-xs text-muted-foreground">
-              Next lead goes to:{" "}
-              <span className="font-medium text-foreground">
-                {effectivePool.length > 0
-                  ? (effectivePool[(settings.roundRobinIndex ?? 0) % effectivePool.length]?.name ?? "—")
-                  : "No eligible members"}
-              </span>
-            </p>
+          <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                {roundRobinStartDate
+                  ? <>Fairness baseline: leads counted from <span className="font-medium text-foreground">{roundRobinStartDate}</span></>
+                  : <>
+                      Next global rotation position:{" "}
+                      <span className="font-medium text-foreground">
+                        {effectivePool.length > 0
+                          ? (effectivePool[(settings.roundRobinIndex ?? 0) % effectivePool.length]?.name ?? "—")
+                          : "No eligible members"}
+                      </span>
+                    </>
+                }
+              </p>
+            </div>
+            {!roundRobinStartDate && (
+              <p className="text-[11px] text-violet-400/80 pl-6">
+                Each lead source (Google Ads, Meta, etc.) rotates independently — sources don't steal turns from each other.
+              </p>
+            )}
           </div>
         </motion.div>
       )}
