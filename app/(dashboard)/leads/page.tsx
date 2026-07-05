@@ -6,7 +6,7 @@ import {
   X, Upload, FileText, ChevronDown, ExternalLink, AlertTriangle,
   CalendarDays, Filter, Tags, ArrowRightLeft, CheckSquare, Square,
   LayoutGrid, List, Columns3, GripVertical, Phone, History,
-  ArrowUpDown, ArrowUp, ArrowDown, MessageCircle,
+  ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Sheet,
 } from "lucide-react";
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
@@ -683,6 +683,10 @@ function LeadsPageContent() {
         <div className="flex items-center gap-2">
           {canCreate && (
             <>
+              <Button variant="outline" size="sm" onClick={() => router.push("/leads/sheets")} className="gap-2">
+                <Sheet className="h-4 w-4" />
+                <span className="hidden sm:inline">Sheets & Sources</span>
+              </Button>
               <Button variant="outline" onClick={() => router.push("/leads/upload-legacy")} className="gap-2">
                 <History className="h-4 w-4" />
                 <span className="hidden sm:inline">Import Old Leads</span>

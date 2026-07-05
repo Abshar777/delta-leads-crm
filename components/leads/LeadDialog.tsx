@@ -25,9 +25,10 @@ import {
 import { useCreateLead, useUpdateLead } from "@/hooks/useLeads";
 import { useAllCourses } from "@/hooks/useCourses";
 import { useTeams, useTeam } from "@/hooks/useTeams";
+import { useSheetSources } from "@/hooks/useSheetSources";
 import type { Lead } from "@/types/lead";
 
-const SOURCES = [
+const FALLBACK_SOURCES = [
   { value: "website",  label: "Website" },
   { value: "referral", label: "Referral" },
   { value: "social",   label: "Social Media" },
@@ -48,9 +49,12 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
   const { mutate: createLead, isPending: creating } = useCreateLead();
   const { mutate: updateLead, isPending: updating } = useUpdateLead();
   const { data: allCourses = [] } = useAllCourses();
-  // All active teams for the Team dropdown
   const { data: teamsData } = useTeams({ status: "active", limit: 100 });
   const teams = teamsData?.data ?? [];
+  const { data: sheetSources = [] } = useSheetSources();
+  const SOURCES = sheetSources.filter((s) => s.isActive).length > 0
+    ? sheetSources.filter((s) => s.isActive).map((s) => ({ value: s.source, label: s.name }))
+    : FALLBACK_SOURCES;
 
   const isPending = creating || updating;
 
