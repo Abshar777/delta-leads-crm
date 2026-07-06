@@ -47,6 +47,7 @@ import { ReminderPanel } from "@/components/leads/ReminderPanel";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import { PaymentPanel } from "@/components/leads/PaymentPanel";
 import { CallsPanel } from "@/components/leads/CallsPanel";
+import { FollowUpPanel } from "@/components/leads/FollowUpPanel";
 import { ClickToCall } from "@/components/leads/ClickToCall";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
@@ -1320,6 +1321,10 @@ export default function LeadDetailPage() {
           <ReminderPanel
             leadId={lead._id}
             reminders={lead.reminders ?? []}
+            canEdit={canEdit}
+          />
+          <FollowUpPanel
+            leadId={lead._id}
             canEdit={canEdit}
           />
           <CallsPanel

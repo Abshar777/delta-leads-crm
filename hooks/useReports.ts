@@ -277,3 +277,73 @@ export function useResponseTimeReport(params: {
     staleTime: 60_000,
   });
 }
+
+// ── Follow-Up Report ───────────────────────────────────────────────────────────
+
+export interface FollowUpAgentRank {
+  agentId: string;
+  agentName: string;
+  agentEmail?: string;
+  totalFollowUps: number;
+  uniqueLeads: number;
+  lastFollowUp?: string;
+}
+
+export interface FollowUpLeadBreakdown {
+  _id: string;
+  name: string;
+  phone: string;
+  status: string;
+  source?: string;
+  nextFollowUpAt?: string | null;
+  followUpCount: number;
+  totalFollowUpsAllTime: number;
+  lastFollowUpAt?: string;
+  agentName: string;
+  agentEmail?: string;
+}
+
+export interface FollowUpOverdueLead {
+  _id: string;
+  name: string;
+  phone: string;
+  source?: string;
+  status: string;
+  nextFollowUpAt: string;
+  assignedTo?: { _id: string; name: string; email: string };
+  course?: { _id: string; name: string };
+  overdueByMinutes: number | null;
+  totalFollowUps: number;
+}
+
+export interface FollowUpReport {
+  summary: {
+    totalFollowUps: number;
+    totalAgentsTracked: number;
+    overdueCount: number;
+    leadsWithFollowUps: number;
+  };
+  agentRanking: FollowUpAgentRank[];
+  leadBreakdown: FollowUpLeadBreakdown[];
+  overdueLeads: FollowUpOverdueLead[];
+}
+
+export function useFollowUpReport(params: {
+  teamId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  const { teamId, dateFrom, dateTo } = params;
+  return useQuery<FollowUpReport>({
+    queryKey: ["reports", "followups", teamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      const { data } = await api.get<ApiResponse<FollowUpReport>>(`/reports/followups?${p}`);
+      return data.data as FollowUpReport;
+    },
+    staleTime: 60_000,
+  });
+}

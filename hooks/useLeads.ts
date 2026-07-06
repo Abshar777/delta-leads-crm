@@ -460,3 +460,55 @@ export const useUpdateCallCount = () => {
   });
 };
 
+
+// ── Follow-Up hooks ───────────────────────────────────────────────────────────
+
+export interface FollowUpEntry {
+  _id: string;
+  note?: string;
+  followedUpAt: string;
+  followedUpBy: { _id: string; name: string; email: string };
+  nextFollowUpAt?: string | null;
+  createdAt: string;
+}
+
+export interface FollowUpsData {
+  followUps: FollowUpEntry[];
+  nextFollowUpAt: string | null;
+  total: number;
+}
+
+export const useFollowUps = (leadId: string) => {
+  return useQuery<FollowUpsData>({
+    queryKey: ["leads", leadId, "followups"],
+    queryFn: async () => {
+      const { data } = await api.get<{ data: FollowUpsData }>(`/leads/${leadId}/followups`);
+      return data.data;
+    },
+    enabled: !!leadId,
+    staleTime: 30_000,
+  });
+};
+
+export const useAddFollowUp = (leadId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      note?: string;
+      followedUpAt?: string;
+      nextFollowUpAt?: string | null;
+    }) => {
+      const { data } = await api.post(`/leads/${leadId}/followups`, payload);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads", leadId, "followups"] });
+      queryClient.invalidateQueries({ queryKey: ["leads", leadId] });
+      toast.success("Follow-up logged");
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Failed to log follow-up";
+      toast.error(msg);
+    },
+  });
+};

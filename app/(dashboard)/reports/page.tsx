@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
-  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer,
+  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer, CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1770,7 +1770,8 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
 ];
 
 const EXTRA_LINKS = [
-  { href: "/reports/response-time", label: "Response Time SLA", icon: Timer },
+  { href: "/reports/response-time", label: "Response Time SLA",   icon: Timer },
+  { href: "/reports/followups",     label: "Follow-Up Tracking",  icon: CalendarCheck },
 ];
 
 function ReportsPageContent() {
