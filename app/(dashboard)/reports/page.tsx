@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
-  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer, CalendarCheck,
+  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer, CalendarCheck, Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +37,9 @@ import {
   useRevenueTeams,
   useSourceAnalytics,
   useCampaignBreakdown,
+  usePipelineBreakdown,
 } from "@/hooks/useReports";
+import type { PipelineStage, PipelineTrendPoint } from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useCurrencyStore } from "@/lib/store/currencyStore";
@@ -1760,13 +1762,190 @@ function SourceAnalyticsTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: st
 // ROOT PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "split" | "revenue" | "sources";
+// ── Pipeline Tab ──────────────────────────────────────────────────────────────
+
+const PIPELINE_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
+  contacted:    { bg: "bg-blue-500/10",    text: "text-blue-400",    border: "border-blue-500/20",    bar: "#3b82f6" },
+  followUp:     { bg: "bg-amber-500/10",   text: "text-amber-400",   border: "border-amber-500/20",   bar: "#f59e0b" },
+  interested:   { bg: "bg-violet-500/10",  text: "text-violet-400",  border: "border-violet-500/20",  bar: "#8b5cf6" },
+  notInterested:{ bg: "bg-red-500/10",     text: "text-red-400",     border: "border-red-500/20",     bar: "#ef4444" },
+  lost:         { bg: "bg-gray-500/10",    text: "text-gray-400",    border: "border-gray-500/20",    bar: "#6b7280" },
+  converted:    { bg: "bg-green-500/10",   text: "text-green-400",   border: "border-green-500/20",   bar: "#10b981" },
+};
+
+const STAGE_ICONS: Record<string, React.ElementType> = {
+  contacted:    Users,
+  followUp:     CalendarCheck,
+  interested:   Award,
+  notInterested:X,
+  lost:         AlertTriangle,
+  converted:    Trophy,
+};
+
+function PipelineTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId, setTeamId] = useState("");
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teams = teamsData?.data ?? [];
+  const { data, isLoading } = usePipelineBreakdown({ teamId: teamId || undefined, dateFrom, dateTo });
+
+  return (
+    <div className="space-y-6">
+      {/* Team filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Filter by team:</span>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setTeamId("")}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition-all",
+              !teamId
+                ? "border-primary/60 bg-primary/10 text-primary"
+                : "border-border bg-muted text-muted-foreground hover:border-primary/30",
+            )}
+          >
+            All teams
+          </button>
+          {teams.map((t) => (
+            <button
+              key={t._id}
+              onClick={() => setTeamId(t._id)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                teamId === t._id
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-muted text-muted-foreground hover:border-primary/30",
+              )}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stage cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-28 animate-pulse rounded-xl bg-muted/40 border border-border/50" />
+          ))}
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {data.stages.map((stage: PipelineStage) => {
+              const c = PIPELINE_COLORS[stage.key] ?? PIPELINE_COLORS.converted;
+              const Icon = STAGE_ICONS[stage.key] ?? Users;
+              return (
+                <motion.div
+                  key={stage.key}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Card className={cn("border", c.border, "overflow-hidden")}>
+                    <CardContent className="pt-4 pb-3 px-4">
+                      <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg mb-3", c.bg)}>
+                        <Icon className={cn("h-4 w-4", c.text)} />
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-tight">{stage.label}</p>
+                      <p className={cn("text-2xl font-bold tabular-nums mt-0.5", c.text)}>{stage.count.toLocaleString()}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full bg-muted/60 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${Math.min(stage.pct, 100)}%`, backgroundColor: c.bar }}
+                          />
+                        </div>
+                        <span className={cn("text-[11px] font-semibold tabular-nums shrink-0", c.text)}>
+                          {stage.pct}%
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">of {data.total.toLocaleString()} total</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Trend chart */}
+          {data.trend.length > 1 && (
+            <Card className="border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  Pipeline Trend — Last 6 Months
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={data.trend} barSize={10} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={32} />
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }}
+                      labelStyle={{ fontWeight: 600 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                    {(Object.entries(PIPELINE_COLORS) as [string, { bar: string }][]).map(([key, c]) => (
+                      <Bar key={key} dataKey={key} name={data.stages.find((s: PipelineStage) => s.key === key)?.label ?? key} fill={c.bar} radius={[3, 3, 0, 0]} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Funnel visual */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Filter className="h-4 w-4 text-primary" />
+                Conversion Funnel
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data.stages.map((stage: PipelineStage, idx: number) => {
+                const c = PIPELINE_COLORS[stage.key] ?? PIPELINE_COLORS.converted;
+                const barW = data.total > 0 ? Math.max((stage.count / data.total) * 100, stage.count > 0 ? 4 : 0) : 0;
+                return (
+                  <div key={stage.key} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{stage.label}</span>
+                    <div className="flex-1 h-7 rounded-lg bg-muted/40 overflow-hidden relative">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${barW}%` }}
+                        transition={{ duration: 0.6, delay: idx * 0.07 }}
+                        className="absolute left-0 top-0 h-full rounded-lg flex items-center px-2"
+                        style={{ backgroundColor: c.bar + "33", borderLeft: `3px solid ${c.bar}` }}
+                      >
+                        <span className={cn("text-xs font-semibold tabular-nums", c.text)}>
+                          {stage.count.toLocaleString()}
+                        </span>
+                      </motion.div>
+                    </div>
+                    <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">{stage.pct}%</span>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Overview",      shortLabel: "Overview", icon: BarChart2    },
   { id: "split",    label: "Lead Splitting", shortLabel: "Leads",    icon: GitFork      },
   { id: "revenue",  label: "Revenue",        shortLabel: "Revenue",  icon: DollarSign   },
   { id: "sources",  label: "Sources",        shortLabel: "Sources",  icon: TrendingUp   },
+  { id: "pipeline", label: "Pipeline",       shortLabel: "Pipeline", icon: Filter       },
 ];
 
 const EXTRA_LINKS = [
@@ -1941,6 +2120,10 @@ function ReportsPageContent() {
           ) : activeTab === "revenue" ? (
             <motion.div key="revenue" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <RevenueTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "pipeline" ? (
+            <motion.div key="pipeline" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <PipelineTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : (
             <motion.div key="sources" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>

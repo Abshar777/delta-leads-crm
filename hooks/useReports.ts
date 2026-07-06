@@ -347,3 +347,50 @@ export function useFollowUpReport(params: {
     staleTime: 60_000,
   });
 }
+
+// ── Pipeline Breakdown ─────────────────────────────────────────────────────────
+
+export interface PipelineStage {
+  key: string;
+  label: string;
+  count: number;
+  pct: number;
+  color: string;
+}
+
+export interface PipelineTrendPoint {
+  month: string;
+  total: number;
+  contacted: number;
+  followUp: number;
+  interested: number;
+  notInterested: number;
+  lost: number;
+  converted: number;
+}
+
+export interface PipelineBreakdown {
+  total: number;
+  stages: PipelineStage[];
+  trend: PipelineTrendPoint[];
+}
+
+export function usePipelineBreakdown(params: {
+  teamId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  const { teamId, dateFrom, dateTo } = params;
+  return useQuery<PipelineBreakdown>({
+    queryKey: ["reports", "pipeline", teamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      const { data } = await api.get<ApiResponse<PipelineBreakdown>>(`/reports/pipeline?${p}`);
+      return data.data as PipelineBreakdown;
+    },
+    staleTime: 60_000,
+  });
+}
