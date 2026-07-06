@@ -13,7 +13,8 @@ import {
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
   Loader2, Tag, X, AlertTriangle, Timer, CalendarCheck, Filter, ArrowUpRight,
-  Sparkles, TrendingDown, Star,
+  Sparkles, TrendingDown, Star, Bell, Shield, GitMerge, Clock, CheckCircle2,
+  XCircle, PhoneCall, UserCheck, AlertOctagon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,8 +43,16 @@ import {
   useResponseTimeReport,
   useFollowUpReport,
   useLeadQualityReport,
+  useSalesFunnel,
+  useManagementAlerts,
+  useAuditReport,
 } from "@/hooks/useReports";
-import type { PipelineStage, PipelineTrendPoint, LeadQualityCampaign, LeadQualitySourceSummary } from "@/hooks/useReports";
+import type {
+  PipelineStage, PipelineTrendPoint, LeadQualityCampaign, LeadQualitySourceSummary,
+  FunnelStage, FunnelTeamRow, FunnelAgentRow,
+  AlertLead, ManagementAlertsReport,
+  AuditEvent,
+} from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useCurrencyStore } from "@/lib/store/currencyStore";
@@ -2627,17 +2636,487 @@ function LeadQualityTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string
   );
 }
 
-type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup" | "lead-quality";
+// ── Sales Funnel Tab ──────────────────────────────────────────────────────────
+
+const FUNNEL_COLORS = ["#6366f1","#8b5cf6","#3b82f6","#22c55e","#f59e0b","#ef4444"];
+
+function SalesFunnelTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId, setTeamId] = useState<string>("");
+  const teamsResult = useTeams();
+  const teamsList = teamsResult.data?.data ?? [];
+  const { data, isLoading } = useSalesFunnel({ teamId: teamId || undefined, dateFrom, dateTo });
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <Select value={teamId || "all"} onValueChange={v => setTeamId(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-40 h-8 text-xs">
+            <SelectValue placeholder="All teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All teams</SelectItem>
+            {teamsList.map((t: { _id: string; name: string }) => (
+              <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+        </div>
+      ) : !data ? (
+        <Empty text="No funnel data for this period" />
+      ) : (
+        <>
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[
+              { label: "Total Received",  value: data.summary.total,             color: FUNNEL_COLORS[0], icon: Users },
+              { label: "Contact Rate",    value: `${data.summary.contactRate}%`,  color: FUNNEL_COLORS[1], icon: PhoneCall },
+              { label: "Qualified",       value: `${data.summary.qualificationRate}%`, color: FUNNEL_COLORS[2], icon: UserCheck },
+              { label: "Follow-Up",       value: `${data.summary.followUpRate}%`, color: FUNNEL_COLORS[3], icon: CalendarCheck },
+              { label: "Converted",       value: `${data.summary.conversionRate}%`, color: FUNNEL_COLORS[4], icon: CheckCircle2 },
+              { label: "Lost",            value: `${data.summary.lostRate}%`,     color: FUNNEL_COLORS[5], icon: XCircle },
+            ].map(({ label, value, color, icon: Icon }, i) => (
+              <motion.div key={label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                <Card className="border-border/50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: `${color}18` }}>
+                        <Icon className="h-3.5 w-3.5" style={{ color }} />
+                      </div>
+                    </div>
+                    <p className="text-xl font-bold text-foreground">{value}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Visual Funnel */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold">Conversion Funnel</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data.stages.map((stage: FunnelStage, i: number) => (
+                <motion.div key={stage.key} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07 }}>
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="text-xs text-muted-foreground w-28 shrink-0">{stage.label}</span>
+                    <div className="flex-1 h-6 bg-muted/40 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full flex items-center px-2"
+                        style={{ background: FUNNEL_COLORS[i % FUNNEL_COLORS.length], width: `${stage.pct}%` }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${stage.pct}%` }}
+                        transition={{ duration: 0.7, delay: i * 0.1, ease: "easeOut" }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium w-16 text-right shrink-0">{stage.count.toLocaleString()} ({stage.pct}%)</span>
+                    {stage.dropPct !== null && (
+                      <span className="text-xs text-red-500 w-16 shrink-0">↓ {stage.dropPct}%</span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Team Breakdown + Top Agents */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Team Breakdown */}
+            {data.teamBreakdown.length > 0 && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold">Team Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border/30">
+                          <th className="text-left py-2 text-muted-foreground font-medium">Team</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">Total</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">Contacted</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">Converted</th>
+                          <th className="text-right py-2 text-muted-foreground font-medium">Conv %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.teamBreakdown.map((t: FunnelTeamRow) => (
+                          <tr key={t.teamId} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                            <td className="py-2 font-medium text-foreground">{t.teamName}</td>
+                            <td className="py-2 text-right">{t.total}</td>
+                            <td className="py-2 text-right">{t.contacted}</td>
+                            <td className="py-2 text-right text-green-600">{t.converted}</td>
+                            <td className="py-2 text-right font-medium">{t.conversionRate}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Top Agents */}
+            {data.topAgents.length > 0 && (
+              <Card className="border-border/50">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold">Top Agents by Conversions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {data.topAgents.slice(0, 8).map((agent: FunnelAgentRow, i: number) => (
+                    <motion.div key={agent.agentId} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                      className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}.</span>
+                      <span className="text-xs font-medium flex-1 truncate">{agent.agentName}</span>
+                      <span className="text-xs text-green-600 font-semibold">{agent.converted} conv</span>
+                      <span className="text-xs text-muted-foreground">{agent.conversionRate}%</span>
+                    </motion.div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Management Alerts Tab ─────────────────────────────────────────────────────
+
+function AlertsTab() {
+  const [teamId, setTeamId] = useState<string>("");
+  const [hours, setHours] = useState<number>(2);
+  const alertsTeamsResult = useTeams();
+  const alertsTeamsList = alertsTeamsResult.data?.data ?? [];
+  const { data, isLoading, refetch } = useManagementAlerts({ teamId: teamId || undefined, uncontactedHours: hours });
+
+  function formatIST(iso: string) {
+    return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata", day: "2-digit", month: "short",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    }) + " IST";
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex flex-wrap gap-3 items-center">
+          <Select value={teamId || "all"} onValueChange={v => setTeamId(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-36 h-8 text-xs">
+              <SelectValue placeholder="All teams" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All teams</SelectItem>
+              {alertsTeamsList.map((t: { _id: string; name: string }) => (
+                <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(hours)} onValueChange={v => setHours(Number(v))}>
+            <SelectTrigger className="w-44 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Uncontacted &gt; 1h</SelectItem>
+              <SelectItem value="2">Uncontacted &gt; 2h</SelectItem>
+              <SelectItem value="4">Uncontacted &gt; 4h</SelectItem>
+              <SelectItem value="8">Uncontacted &gt; 8h</SelectItem>
+              <SelectItem value="24">Uncontacted &gt; 24h</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="h-8 text-xs gap-1.5">
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+        </div>
+      ) : !data ? null : (
+        <>
+          {/* Lost Spike Banner */}
+          <AnimatePresence>
+            {data.summary.hasSpikeAlert && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertOctagon className="h-5 w-5 text-red-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-600">Lost Lead Spike Detected</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {data.summary.lostRecent} lost in the last 7 days vs {data.summary.lostPrev} in the prior 7 days —{" "}
+                    <span className="font-medium text-red-500">+{Math.round(data.summary.lostSpikePct)}% increase</span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { label: `Uncontacted > ${hours}h`, value: data.summary.uncontactedCount, color: "#f97316", icon: Clock, warn: data.summary.uncontactedCount > 0 },
+              { label: "Overdue Follow-Ups",       value: data.summary.overdueFollowUps,  color: "#ef4444", icon: AlertTriangle, warn: data.summary.overdueFollowUps > 0 },
+              { label: "Lost (last 7 days)",        value: data.summary.lostRecent,         color: data.summary.hasSpikeAlert ? "#ef4444" : "#64748b", icon: TrendingDown, warn: data.summary.hasSpikeAlert },
+            ].map(({ label, value, color, icon: Icon, warn }, i) => (
+              <motion.div key={label} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 }}>
+                <Card className={cn("border-border/50", warn && "border-orange-500/30 bg-orange-500/5")}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ background: `${color}18` }}>
+                        <Icon className="h-3.5 w-3.5" style={{ color }} />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold" style={{ color: warn ? color : undefined }}>{value}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Uncontacted Leads list */}
+          {data.uncontacted.length > 0 && (
+            <Card className="border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  Uncontacted Leads ({data.uncontacted.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/20">
+                  {data.uncontacted.map((lead: AlertLead) => (
+                    <div key={lead._id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{lead.name}</p>
+                        <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">{lead.assignedTo?.name ?? "Unassigned"}</p>
+                        {lead.assignedAt && <p className="text-xs text-orange-500">Since {formatIST(lead.assignedAt)}</p>}
+                      </div>
+                      <div className="shrink-0">
+                        <span className="text-xs bg-orange-500/10 text-orange-600 px-2 py-0.5 rounded-full font-medium">
+                          {lead.hoursUncontacted != null ? `${Math.round(lead.hoursUncontacted)}h` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Overdue Follow-Ups list */}
+          {data.overdueFollowUps.length > 0 && (
+            <Card className="border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  Overdue Follow-Ups ({data.overdueFollowUps.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y divide-border/20">
+                  {data.overdueFollowUps.map((lead: AlertLead) => (
+                    <div key={lead._id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{lead.name}</p>
+                        <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">{lead.assignedTo?.name ?? "Unassigned"}</p>
+                        {lead.nextFollowUpAt && <p className="text-xs text-red-500">Due {formatIST(lead.nextFollowUpAt)}</p>}
+                      </div>
+                      <div className="shrink-0">
+                        <span className="text-xs bg-red-500/10 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                          {lead.overdueByMinutes != null ? `${Math.round(lead.overdueByMinutes)}m overdue` : "Overdue"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {data.uncontacted.length === 0 && data.overdueFollowUps.length === 0 && (
+            <Empty text="No alerts — all leads are being handled on time 🎉" />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Audit Trail Tab ────────────────────────────────────────────────────────────
+
+const AUDIT_ACTIONS = [
+  { value: "",                label: "All actions"           },
+  { value: "status_changed",  label: "Status changes"        },
+  { value: "lead_assigned",   label: "Lead assignments"      },
+  { value: "note_added",      label: "Notes added"           },
+  { value: "note_updated",    label: "Notes edited"          },
+  { value: "note_deleted",    label: "Notes deleted"         },
+];
+
+const ACTION_META: Record<string, { label: string; color: string }> = {
+  status_changed: { label: "Status Changed",  color: "#6366f1" },
+  lead_assigned:  { label: "Assigned",         color: "#3b82f6" },
+  note_added:     { label: "Note Added",       color: "#22c55e" },
+  note_updated:   { label: "Note Edited",      color: "#f59e0b" },
+  note_deleted:   { label: "Note Deleted",     color: "#ef4444" },
+};
+
+function AuditTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId, setTeamId] = useState<string>("");
+  const [action, setAction] = useState<string>("");
+  const auditTeamsResult = useTeams();
+  const auditTeamsList = auditTeamsResult.data?.data ?? [];
+  const { data, isLoading } = useAuditReport({ teamId: teamId || undefined, dateFrom, dateTo, action: action || undefined });
+
+  function formatIST(iso: string) {
+    return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata", day: "2-digit", month: "short",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    }) + " IST";
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <Select value={teamId || "all"} onValueChange={v => setTeamId(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-36 h-8 text-xs">
+            <SelectValue placeholder="All teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All teams</SelectItem>
+            {auditTeamsList.map((t: { _id: string; name: string }) => (
+              <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={action || "all-actions"} onValueChange={v => setAction(v === "all-actions" ? "" : v)}>
+          <SelectTrigger className="w-44 h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {AUDIT_ACTIONS.map(a => (
+              <SelectItem key={a.value || "all-actions"} value={a.value || "all-actions"}>{a.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Action summary pills */}
+      {!isLoading && data && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(data.summary).map(([act, count]) => {
+            const meta = ACTION_META[act];
+            if (!meta || !count) return null;
+            return (
+              <motion.button key={act} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setAction(act === action ? "" : act)}
+                className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors",
+                  action === act ? "border-primary/50 bg-primary/10 text-primary" : "border-border/50 hover:bg-muted/50"
+                )}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />
+                {meta.label}
+                <span className="opacity-70">{count as number}</span>
+              </motion.button>
+            );
+          })}
+          {data.total > 0 && (
+            <span className="text-xs text-muted-foreground self-center ml-1">{data.total} events total</span>
+          )}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-16" />)}
+        </div>
+      ) : !data?.events.length ? (
+        <Empty text="No audit events for this period" />
+      ) : (
+        <Card className="border-border/50">
+          <CardContent className="p-0">
+            <div className="divide-y divide-border/20">
+              {data.events.map((event: AuditEvent, i: number) => {
+                const meta = ACTION_META[event.action] ?? { label: event.action, color: "#64748b" };
+                return (
+                  <motion.div key={event._id} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
+                    {/* Dot */}
+                    <div className="mt-1.5 h-2 w-2 rounded-full shrink-0" style={{ background: meta.color }} />
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-foreground truncate max-w-[180px]">{event.leadName}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: `${meta.color}18`, color: meta.color }}>{meta.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{event.description}</p>
+                      {event.changes && Object.keys(event.changes).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {Object.entries(event.changes).map(([field, change]) => {
+                            const c = change as { from: unknown; to: unknown };
+                            if (c.from === null && c.to === null) return null;
+                            return (
+                              <span key={field} className="text-xs bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground">
+                                {c.from != null ? <span className="line-through opacity-60">{String(c.from).slice(0, 40)}</span> : null}
+                                {c.from != null && c.to != null ? " → " : null}
+                                {c.to != null ? <span>{String(c.to).slice(0, 40)}</span> : null}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    {/* Right meta */}
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-medium text-foreground">{event.performedBy?.name ?? "System"}</p>
+                      <p className="text-xs text-muted-foreground">{formatIST(event.createdAt)}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ── Tab routing ───────────────────────────────────────────────────────────────
+
+type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup" | "lead-quality" | "funnel" | "alerts" | "audit";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
-  { id: "overview",       label: "Overview",          shortLabel: "Overview",  icon: BarChart2    },
-  { id: "split",          label: "Lead Splitting",     shortLabel: "Leads",     icon: GitFork      },
-  { id: "revenue",        label: "Revenue",            shortLabel: "Revenue",   icon: DollarSign   },
-  { id: "sources",        label: "Sources",            shortLabel: "Sources",   icon: TrendingUp   },
-  { id: "pipeline",       label: "Pipeline",           shortLabel: "Pipeline",  icon: Filter       },
-  { id: "response-time",  label: "Response Time SLA",   shortLabel: "SLA",      icon: Timer        },
+  { id: "overview",       label: "Overview",           shortLabel: "Overview",  icon: BarChart2    },
+  { id: "split",          label: "Lead Splitting",      shortLabel: "Leads",     icon: GitFork      },
+  { id: "revenue",        label: "Revenue",             shortLabel: "Revenue",   icon: DollarSign   },
+  { id: "sources",        label: "Sources",             shortLabel: "Sources",   icon: TrendingUp   },
+  { id: "pipeline",       label: "Pipeline",            shortLabel: "Pipeline",  icon: Filter       },
+  { id: "response-time",  label: "Response Time SLA",   shortLabel: "SLA",       icon: Timer        },
   { id: "followup",       label: "Follow-Up Tracking",  shortLabel: "Follow-Up", icon: CalendarCheck },
-  { id: "lead-quality",   label: "Lead Quality",         shortLabel: "Quality",  icon: Sparkles      },
+  { id: "lead-quality",   label: "Lead Quality",        shortLabel: "Quality",   icon: Sparkles     },
+  { id: "funnel",         label: "Sales Funnel",        shortLabel: "Funnel",    icon: GitMerge     },
+  { id: "alerts",         label: "Mgmt Alerts",         shortLabel: "Alerts",    icon: Bell         },
+  { id: "audit",          label: "Audit Trail",         shortLabel: "Audit",     icon: Shield       },
 ];
 
 function ReportsPageContent() {
@@ -2812,6 +3291,18 @@ function ReportsPageContent() {
           ) : activeTab === "lead-quality" ? (
             <motion.div key="lead-quality" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <LeadQualityTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "funnel" ? (
+            <motion.div key="funnel" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <SalesFunnelTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "alerts" ? (
+            <motion.div key="alerts" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <AlertsTab />
+            </motion.div>
+          ) : activeTab === "audit" ? (
+            <motion.div key="audit" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <AuditTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : (
             <motion.div key="sources" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>

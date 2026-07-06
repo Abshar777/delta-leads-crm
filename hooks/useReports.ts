@@ -457,3 +457,146 @@ export function useLeadQualityReport(params: {
     staleTime: 60_000,
   });
 }
+
+// ── Sales Funnel ───────────────────────────────────────────────────────────────
+
+export interface FunnelStage {
+  key:      string;
+  label:    string;
+  count:    number;
+  pct:      number;
+  dropPct:  number | null;
+}
+
+export interface FunnelTeamRow {
+  teamId:         string;
+  teamName:       string;
+  total:          number;
+  contacted:      number;
+  converted:      number;
+  lost:           number;
+  conversionRate: number;
+  contactRate:    number;
+}
+
+export interface FunnelAgentRow {
+  agentId:        string;
+  agentName:      string;
+  total:          number;
+  contacted:      number;
+  converted:      number;
+  inFollowUp:     number;
+  conversionRate: number;
+}
+
+export interface SalesFunnelReport {
+  summary: {
+    total:             number;
+    contactRate:       number;
+    qualificationRate: number;
+    followUpRate:      number;
+    conversionRate:    number;
+    lostRate:          number;
+  };
+  stages:        FunnelStage[];
+  teamBreakdown: FunnelTeamRow[];
+  topAgents:     FunnelAgentRow[];
+}
+
+export function useSalesFunnel(params: { teamId?: string; dateFrom?: string; dateTo?: string }) {
+  const { teamId, dateFrom, dateTo } = params;
+  return useQuery<SalesFunnelReport>({
+    queryKey: ["reports", "funnel", teamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      const { data } = await api.get<ApiResponse<SalesFunnelReport>>(`/reports/funnel?${p}`);
+      return data.data as SalesFunnelReport;
+    },
+    staleTime: 60_000,
+  });
+}
+
+// ── Management Alerts ──────────────────────────────────────────────────────────
+
+export interface AlertLead {
+  _id:              string;
+  name:             string;
+  phone:            string;
+  source?:          string;
+  status:           string;
+  assignedAt?:      string;
+  nextFollowUpAt?:  string;
+  assignedTo?:      { _id: string; name: string; email: string };
+  team?:            { _id: string; name: string };
+  hoursUncontacted?:  number | null;
+  overdueByMinutes?:  number | null;
+}
+
+export interface ManagementAlertsReport {
+  summary: {
+    uncontactedCount:  number;
+    overdueFollowUps:  number;
+    lostRecent:        number;
+    lostPrev:          number;
+    lostSpikePct:      number;
+    hasSpikeAlert:     boolean;
+  };
+  uncontacted:      AlertLead[];
+  overdueFollowUps: AlertLead[];
+}
+
+export function useManagementAlerts(params: { teamId?: string; uncontactedHours?: number }) {
+  const { teamId, uncontactedHours } = params;
+  return useQuery<ManagementAlertsReport>({
+    queryKey: ["reports", "alerts", teamId, uncontactedHours],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)            p.set("teamId",           teamId);
+      if (uncontactedHours)  p.set("uncontactedHours", String(uncontactedHours));
+      const { data } = await api.get<ApiResponse<ManagementAlertsReport>>(`/reports/alerts?${p}`);
+      return data.data as ManagementAlertsReport;
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+// ── Audit & Transparency ───────────────────────────────────────────────────────
+
+export interface AuditEvent {
+  _id:         string;
+  leadId:      string;
+  leadName:    string;
+  leadPhone:   string;
+  action:      string;
+  description: string;
+  changes?:    Record<string, { from: unknown; to: unknown }>;
+  createdAt:   string;
+  performedBy?: { _id: string; name: string; email: string };
+}
+
+export interface AuditReport {
+  total:   number;
+  summary: Record<string, number>;
+  events:  AuditEvent[];
+}
+
+export function useAuditReport(params: { teamId?: string; dateFrom?: string; dateTo?: string; action?: string }) {
+  const { teamId, dateFrom, dateTo, action } = params;
+  return useQuery<AuditReport>({
+    queryKey: ["reports", "audit", teamId, dateFrom, dateTo, action],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      if (action)   p.set("action",   action);
+      const { data } = await api.get<ApiResponse<AuditReport>>(`/reports/audit?${p}`);
+      return data.data as AuditReport;
+    },
+    staleTime: 30_000,
+  });
+}
