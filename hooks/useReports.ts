@@ -394,3 +394,66 @@ export function usePipelineBreakdown(params: {
     staleTime: 60_000,
   });
 }
+
+// ── Lead Quality Report ────────────────────────────────────────────────────────
+
+export interface LeadQualityCampaign {
+  source:             string;
+  campaign:           string;
+  total:              number;
+  converted:          number;
+  contacted:          number;
+  withFollowUp:       number;
+  lost:               number;
+  conversionRate:     number;
+  contactRate:        number;
+  followUpRate:       number;
+  lostRate:           number;
+  avgResponseMinutes: number | null;
+  qualityScore:       number;
+}
+
+export interface LeadQualitySourceSummary {
+  source:          string;
+  total:           number;
+  avgQualityScore: number;
+  converted:       number;
+  lost:            number;
+  conversionRate:  number;
+  lostRate:        number;
+}
+
+export interface LeadQualityReport {
+  summary: {
+    totalCampaigns:        number;
+    totalLeads:            number;
+    totalConverted:        number;
+    overallConversionRate: number;
+    avgQualityScore:       number;
+    lowQualityCount:       number;
+  };
+  campaigns:        LeadQualityCampaign[];
+  topCampaigns:     LeadQualityCampaign[];
+  sourceSummary:    LeadQualitySourceSummary[];
+  lowQualitySources: LeadQualitySourceSummary[];
+}
+
+export function useLeadQualityReport(params: {
+  teamId?:  string;
+  dateFrom?: string;
+  dateTo?:  string;
+}) {
+  const { teamId, dateFrom, dateTo } = params;
+  return useQuery<LeadQualityReport>({
+    queryKey: ["reports", "lead-quality", teamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      const { data } = await api.get<ApiResponse<LeadQualityReport>>(`/reports/lead-quality?${p}`);
+      return data.data as LeadQualityReport;
+    },
+    staleTime: 60_000,
+  });
+}

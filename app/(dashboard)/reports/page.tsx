@@ -13,6 +13,7 @@ import {
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
   Loader2, Tag, X, AlertTriangle, Timer, CalendarCheck, Filter, ArrowUpRight,
+  Sparkles, TrendingDown, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,8 +41,9 @@ import {
   usePipelineBreakdown,
   useResponseTimeReport,
   useFollowUpReport,
+  useLeadQualityReport,
 } from "@/hooks/useReports";
-import type { PipelineStage, PipelineTrendPoint } from "@/hooks/useReports";
+import type { PipelineStage, PipelineTrendPoint, LeadQualityCampaign, LeadQualitySourceSummary } from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useCurrencyStore } from "@/lib/store/currencyStore";
@@ -2314,7 +2316,318 @@ function FollowUpTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
   );
 }
 
-type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup";
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 8: Lead Quality Analysis
+// ─────────────────────────────────────────────────────────────────────────────
+
+const QUALITY_BAND = (score: number) =>
+  score >= 70 ? { label: "High",   cls: "bg-green-500/15 text-green-400 border-green-500/30"  } :
+  score >= 40 ? { label: "Medium", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30"  } :
+               { label: "Low",    cls: "bg-red-500/15   text-red-400   border-red-500/30"    };
+
+function QualityBadge({ score }: { score: number }) {
+  const { label, cls } = QUALITY_BAND(score);
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>
+      {label} · {score}
+    </span>
+  );
+}
+
+function ScoreBar({ score }: { score: number }) {
+  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1.5 rounded-full bg-muted/50 overflow-hidden min-w-[60px]">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ backgroundColor: color }}
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(score, 100)}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+      </div>
+      <span className="text-[11px] font-bold tabular-nums shrink-0" style={{ color }}>{score}</span>
+    </div>
+  );
+}
+
+type SortKey = "qualityScore" | "conversionRate" | "contactRate" | "followUpRate" | "lostRate" | "total";
+
+function LeadQualityTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId,  setTeamId]  = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("qualityScore");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [minLeads, setMinLeads] = useState(1);
+
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teams = teamsData?.data ?? [];
+
+  const { data, isLoading } = useLeadQualityReport({
+    teamId:   teamId || undefined,
+    dateFrom,
+    dateTo,
+  });
+
+  const summary = data?.summary;
+
+  const sorted = useMemo(() => {
+    const filtered = (data?.campaigns ?? []).filter((c) => c.total >= minLeads);
+    return [...filtered].sort((a, b) => {
+      const av = a[sortKey] as number ?? 0;
+      const bv = b[sortKey] as number ?? 0;
+      return sortAsc ? av - bv : bv - av;
+    });
+  }, [data?.campaigns, sortKey, sortAsc, minLeads]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortAsc((v) => !v);
+    else { setSortKey(k); setSortAsc(false); }
+  }
+
+  function SortIcon({ k }: { k: SortKey }) {
+    if (sortKey !== k) return <span className="opacity-20 ml-0.5">↕</span>;
+    return <span className="ml-0.5">{sortAsc ? "↑" : "↓"}</span>;
+  }
+
+  function fmtMins(m: number | null) {
+    if (m === null || m === undefined) return "—";
+    if (m < 60) return `${Math.round(m)}m`;
+    return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Team:</span>
+          <Select value={teamId || "all"} onValueChange={(v) => setTeamId(v === "all" ? "" : v)}>
+            <SelectTrigger className="h-8 w-40 text-xs border-border/50"><SelectValue placeholder="All Teams" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {teams.map((t) => <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Min leads:</span>
+          <div className="flex rounded-lg border border-border/50 overflow-hidden">
+            {[1, 5, 10, 20].map((n) => (
+              <button key={n} onClick={() => setMinLeads(n)}
+                className={cn("px-3 py-1.5 text-xs font-medium transition-colors",
+                  minLeads === n ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50")}>
+                {n}+
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KpiCard title="Campaigns"       value={summary?.totalCampaigns ?? 0}           icon={Tag}         gradient="bg-gradient-to-br from-blue-500 to-blue-600"    delay={0}    loading={isLoading} />
+        <KpiCard title="Total Leads"     value={summary?.totalLeads ?? 0}               icon={Users}       gradient="bg-gradient-to-br from-violet-500 to-violet-600" delay={0.04} loading={isLoading} />
+        <KpiCard title="Converted"       value={summary?.totalConverted ?? 0}           icon={Trophy}      gradient="bg-gradient-to-br from-green-500 to-green-600"   delay={0.08} loading={isLoading} />
+        <KpiCard title="Conversion Rate" value={`${summary?.overallConversionRate ?? 0}%`} icon={TrendingUp} gradient="bg-gradient-to-br from-teal-500 to-teal-600"  delay={0.12} loading={isLoading} />
+        <KpiCard title="Avg Quality"     value={summary?.avgQualityScore ?? 0}          icon={Star}        gradient="bg-gradient-to-br from-amber-500 to-amber-600"   delay={0.16} loading={isLoading} />
+        <KpiCard title="Low-Quality Src" value={summary?.lowQualityCount ?? 0}          icon={AlertTriangle} gradient={(summary?.lowQualityCount ?? 0) > 0 ? "bg-gradient-to-br from-red-500 to-red-600" : "bg-gradient-to-br from-slate-500 to-slate-600"} delay={0.2} loading={isLoading} className="col-span-2 sm:col-span-1" />
+      </div>
+
+      {/* Two side-by-side panels: top campaigns + low-quality sources */}
+      {!isLoading && data && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* High-converting campaigns */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Card className="border-green-500/20 bg-card/80 backdrop-blur-sm h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-green-400">
+                  <Sparkles className="h-4 w-4" /> Top Converting Campaigns
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {data.topCampaigns.length === 0 ? (
+                  <Empty text="No campaigns with 5+ leads yet" />
+                ) : (
+                  <div className="space-y-3">
+                    {data.topCampaigns.map((c, i) => (
+                      <motion.div key={`${c.source}-${c.campaign}-${i}`}
+                        initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl border border-border/40 bg-muted/20 hover:bg-muted/40 transition-colors">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-400 font-bold text-sm">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {c.campaign || <span className="italic text-muted-foreground">No campaign tag</span>}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground capitalize">{c.source} · {c.total} leads</p>
+                          <ScoreBar score={c.qualityScore} />
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-green-400 tabular-nums">{c.conversionRate}%</p>
+                          <p className="text-[10px] text-muted-foreground">conv rate</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Low-quality sources */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <Card className="border-red-500/20 bg-card/80 backdrop-blur-sm h-full">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-400">
+                  <TrendingDown className="h-4 w-4" /> Low-Quality Sources
+                  <span className="ml-1 text-[10px] font-normal text-muted-foreground">(score &lt; 40, 5+ leads)</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {data.lowQualitySources.length === 0 ? (
+                  <div className="flex h-[180px] flex-col items-center justify-center gap-2 text-sm text-green-400">
+                    <Sparkles className="h-8 w-8 opacity-40" />
+                    All sources are healthy
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.lowQualitySources.map((s, i) => (
+                      <motion.div key={s.source}
+                        initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-400 font-bold text-xs uppercase">
+                          {s.source.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground capitalize truncate">{s.source}</p>
+                          <p className="text-[10px] text-muted-foreground">{s.total} leads · {s.conversionRate}% conv · {s.lostRate}% lost</p>
+                          <ScoreBar score={s.avgQualityScore} />
+                        </div>
+                        <QualityBadge score={s.avgQualityScore} />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Source summary bar chart */}
+      {!isLoading && (data?.sourceSummary?.length ?? 0) > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BarChart2 className="h-4 w-4 text-primary" /> Quality Score by Source
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                {data!.sourceSummary.map((s, i) => {
+                  const { cls } = QUALITY_BAND(s.avgQualityScore);
+                  const color = s.avgQualityScore >= 70 ? "#22c55e" : s.avgQualityScore >= 40 ? "#f59e0b" : "#ef4444";
+                  return (
+                    <motion.div key={s.source} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i }}
+                      className="flex items-center gap-3">
+                      <span className="w-20 shrink-0 text-xs font-medium text-foreground capitalize text-right">{s.source}</span>
+                      <div className="flex-1 h-7 rounded-lg bg-muted/40 overflow-hidden relative">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(s.avgQualityScore, 100)}%` }}
+                          transition={{ duration: 0.6, delay: 0.08 * i }}
+                          className="absolute left-0 top-0 h-full rounded-lg flex items-center px-2"
+                          style={{ backgroundColor: color + "33", borderLeft: `3px solid ${color}` }}>
+                          <span className="text-xs font-bold tabular-nums" style={{ color }}>{s.avgQualityScore}</span>
+                        </motion.div>
+                      </div>
+                      <span className="w-16 shrink-0 text-[10px] text-muted-foreground text-right">{s.total} leads</span>
+                      <QualityBadge score={s.avgQualityScore} />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Full campaign table */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                Campaign Performance
+                <span className="text-[10px] font-normal text-muted-foreground">— {sorted.length} campaigns</span>
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <div className="space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : sorted.length === 0 ? (
+              <Empty text="No campaign data for this period" />
+            ) : (
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/20 text-[10px] uppercase tracking-wide">
+                      <th className="pb-2 pt-1 text-left font-medium text-muted-foreground px-2">Source</th>
+                      <th className="pb-2 pt-1 text-left font-medium text-muted-foreground px-2">Campaign</th>
+                      {([ ["total","Leads"],["conversionRate","Conv%"],["contactRate","Contact%"],["followUpRate","FollowUp%"],["lostRate","Lost%"],["qualityScore","Quality"] ] as [SortKey, string][]).map(([k, label]) => (
+                        <th key={k} onClick={() => toggleSort(k)}
+                          className="pb-2 pt-1 text-right font-medium text-muted-foreground px-2 cursor-pointer hover:text-foreground select-none transition-colors whitespace-nowrap">
+                          {label}<SortIcon k={k} />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {sorted.map((c, i) => (
+                      <motion.tr key={`${c.source}-${c.campaign}-${i}`}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.02 * i }}
+                        className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2.5 px-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary capitalize">{c.source}</span>
+                        </td>
+                        <td className="py-2.5 px-2 max-w-[180px]">
+                          <p className="truncate text-foreground font-medium">{c.campaign || <span className="italic text-muted-foreground">—</span>}</p>
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-semibold tabular-nums">{c.total}</td>
+                        <td className="py-2.5 px-2 text-right">
+                          <span className={cn("font-bold tabular-nums", c.conversionRate >= 15 ? "text-green-400" : c.conversionRate >= 5 ? "text-yellow-400" : "text-red-400")}>
+                            {c.conversionRate}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-muted-foreground">{c.contactRate}%</td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-muted-foreground">{c.followUpRate}%</td>
+                        <td className="py-2.5 px-2 text-right">
+                          <span className={cn("tabular-nums", c.lostRate > 30 ? "text-red-400 font-semibold" : "text-muted-foreground")}>
+                            {c.lostRate}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-right">
+                          <QualityBadge score={c.qualityScore} />
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
+  );
+}
+
+type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup" | "lead-quality";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
   { id: "overview",       label: "Overview",          shortLabel: "Overview",  icon: BarChart2    },
@@ -2322,8 +2635,9 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
   { id: "revenue",        label: "Revenue",            shortLabel: "Revenue",   icon: DollarSign   },
   { id: "sources",        label: "Sources",            shortLabel: "Sources",   icon: TrendingUp   },
   { id: "pipeline",       label: "Pipeline",           shortLabel: "Pipeline",  icon: Filter       },
-  { id: "response-time",  label: "Response Time SLA",  shortLabel: "SLA",       icon: Timer        },
-  { id: "followup",       label: "Follow-Up Tracking", shortLabel: "Follow-Up", icon: CalendarCheck },
+  { id: "response-time",  label: "Response Time SLA",   shortLabel: "SLA",      icon: Timer        },
+  { id: "followup",       label: "Follow-Up Tracking",  shortLabel: "Follow-Up", icon: CalendarCheck },
+  { id: "lead-quality",   label: "Lead Quality",         shortLabel: "Quality",  icon: Sparkles      },
 ];
 
 function ReportsPageContent() {
@@ -2494,6 +2808,10 @@ function ReportsPageContent() {
           ) : activeTab === "followup" ? (
             <motion.div key="followup" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <FollowUpTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "lead-quality" ? (
+            <motion.div key="lead-quality" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <LeadQualityTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : (
             <motion.div key="sources" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
