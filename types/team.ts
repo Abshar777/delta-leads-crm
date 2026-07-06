@@ -8,6 +8,7 @@ export interface TeamSettings {
   splitTime?: string | null;
   roundRobinStartDate?: string | null;
   lastSplitAt?: string | null;
+  slaMinutes?: number | null;
 }
 
 export interface AbsentEntry {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { Settings, Shuffle, Users, CheckCircle2, Loader2, RefreshCw, Info, Clock, CalendarDays, RotateCcw, Zap, GripVertical, Plus, X } from "lucide-react";
+import { Settings, Shuffle, Users, CheckCircle2, Loader2, RefreshCw, Info, Clock, CalendarDays, RotateCcw, Zap, GripVertical, Plus, X, Timer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -101,6 +101,7 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
   const [splitMode, setSplitMode]           = useState<"round_robin" | "equal_load">("round_robin");
   const [splitTime, setSplitTime]           = useState<string>("");
   const [roundRobinStartDate, setStartDate] = useState<string>("");
+  const [slaMinutes, setSlaMinutes]         = useState<number | null>(null);
 
   // orderedPool = the ordered list of User objects currently selected for auto-split
   const [orderedPool, setOrderedPool] = useState<User[]>([]);
@@ -127,6 +128,7 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
         ? settings.roundRobinStartDate.slice(0, 10)
         : "",
     );
+    setSlaMinutes(settings.slaMinutes ?? null);
     // Build ordered User list from saved includedMembers order
     const savedIds = settings.includedMembers ?? [];
     if (savedIds.length > 0) {
@@ -155,6 +157,7 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
       includedMembers,
       splitTime: splitTime || null,
       roundRobinStartDate: roundRobinStartDate || null,
+      slaMinutes: slaMinutes ?? null,
     });
   }
 
@@ -360,6 +363,67 @@ export function TeamSettingsTab({ teamId, team, isLeaderOrAdmin }: Props) {
           </Card>
         </motion.div>
       )}
+
+      {/* Response Time SLA */}
+      <motion.div variants={itemVariants}>
+        <Card className="border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/10">
+                <Timer className="h-4 w-4 text-orange-400" />
+              </div>
+              Response Time SLA
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Define the target time (in minutes) for agents to make first contact after a lead is assigned. Used in the Response Time report.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {[5, 15, 30, 60, 120].map((min) => (
+                <button
+                  key={min}
+                  type="button"
+                  disabled={!isLeaderOrAdmin}
+                  onClick={() => isLeaderOrAdmin && setSlaMinutes(slaMinutes === min ? null : min)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                    slaMinutes === min
+                      ? "border-orange-500/60 bg-orange-500/10 text-orange-500"
+                      : "border-border bg-muted text-muted-foreground hover:border-orange-500/30 hover:text-orange-500"
+                  }`}
+                >
+                  {min >= 60 ? `${min / 60}h` : `${min}m`}
+                </button>
+              ))}
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={1}
+                  max={10080}
+                  placeholder="Custom"
+                  value={slaMinutes !== null && ![5, 15, 30, 60, 120].includes(slaMinutes) ? slaMinutes : ""}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setSlaMinutes(isNaN(v) ? null : v);
+                  }}
+                  disabled={!isLeaderOrAdmin}
+                  className="w-24 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">min</span>
+              </div>
+            </div>
+            {slaMinutes && (
+              <p className="text-xs text-orange-500/80">
+                Agents must contact leads within{" "}
+                <span className="font-semibold">
+                  {slaMinutes >= 60 ? `${(slaMinutes / 60).toFixed(slaMinutes % 60 === 0 ? 0 : 1)}h` : `${slaMinutes} min`}
+                </span>{" "}
+                of assignment.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Member inclusion + reorder — only shown when auto is on */}
       {autoAssign && (

@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
-  Loader2, Tag, X, ArrowUpRight, AlertTriangle,
+  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1769,6 +1769,10 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
   { id: "sources",  label: "Sources",        shortLabel: "Sources",  icon: TrendingUp   },
 ];
 
+const EXTRA_LINKS = [
+  { href: "/reports/response-time", label: "Response Time SLA", icon: Timer },
+];
+
 function ReportsPageContent() {
   const sp     = useSearchParams();
   const router = useRouter();
@@ -1869,29 +1873,42 @@ function ReportsPageContent() {
           </div>
 
           {/* Tabs — pill style with spring animation */}
-          <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-fit">
-            {TABS.map(({ id, label, shortLabel, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={cn(
-                  "relative flex items-center gap-2 px-3 sm:px-4 py-1.5 text-sm font-medium transition-colors rounded-lg",
-                  activeTab === id
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-fit">
+              {TABS.map(({ id, label, shortLabel, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={cn(
+                    "relative flex items-center gap-2 px-3 sm:px-4 py-1.5 text-sm font-medium transition-colors rounded-lg",
+                    activeTab === id
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {activeTab === id && (
+                    <motion.div
+                      layoutId="tab-active-pill"
+                      className="absolute inset-0 rounded-lg bg-card border border-border/50 shadow-md"
+                      transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
+                    />
+                  )}
+                  <Icon className="relative z-10 h-4 w-4 shrink-0" />
+                  <span className="relative z-10 hidden sm:inline">{label}</span>
+                  <span className="relative z-10 sm:hidden">{shortLabel}</span>
+                </button>
+              ))}
+            </div>
+            {EXTRA_LINKS.map(({ href, label, icon: Icon }) => (
+              <a
+                key={href}
+                href={href}
+                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-orange-500/40 hover:text-orange-500"
               >
-                {activeTab === id && (
-                  <motion.div
-                    layoutId="tab-active-pill"
-                    className="absolute inset-0 rounded-lg bg-card border border-border/50 shadow-md"
-                    transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
-                  />
-                )}
-                <Icon className="relative z-10 h-4 w-4 shrink-0" />
-                <span className="relative z-10 hidden sm:inline">{label}</span>
-                <span className="relative z-10 sm:hidden">{shortLabel}</span>
-              </button>
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+                <ArrowUpRight className="h-3 w-3 opacity-50" />
+              </a>
             ))}
           </div>
         </div>

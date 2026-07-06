@@ -213,3 +213,67 @@ export function useRevenueTeams(dateFrom: string, dateTo: string) {
     staleTime: 60_000,
   });
 }
+
+// ── Response Time SLA ──────────────────────────────────────────────────────────
+
+export interface ResponseTimeAgent {
+  agentId: string;
+  agentName: string;
+  agentEmail?: string;
+  totalAssigned: number;
+  totalContacted: number;
+  totalWithinSla: number;
+  slaComplianceRate: number;
+  avgResponseMinutes: number | null;
+  minResponseMinutes: number | null;
+  maxResponseMinutes: number | null;
+  notContactedCount: number;
+}
+
+export interface ResponseTimeBreachedLead {
+  _id: string;
+  name: string;
+  phone: string;
+  source?: string;
+  status: string;
+  assignedAt: string;
+  assignedTo?: { _id: string; name: string; email: string };
+  course?: { _id: string; name: string };
+  minutesSinceAssign: number | null;
+}
+
+export interface ResponseTimeReport {
+  summary: {
+    slaMinutes: number;
+    totalAssigned: number;
+    totalContacted: number;
+    notContacted: number;
+    totalWithinSla: number;
+    overallSlaRate: number;
+    overallAvgResponseMinutes: number;
+  };
+  agentRanking: ResponseTimeAgent[];
+  breachedLeads: ResponseTimeBreachedLead[];
+}
+
+export function useResponseTimeReport(params: {
+  teamId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  slaMinutes?: number;
+}) {
+  const { teamId, dateFrom, dateTo, slaMinutes } = params;
+  return useQuery<ResponseTimeReport>({
+    queryKey: ["reports", "response-time", teamId, dateFrom, dateTo, slaMinutes],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)     p.set("teamId", teamId);
+      if (dateFrom)   p.set("dateFrom", dateFrom);
+      if (dateTo)     p.set("dateTo", dateTo);
+      if (slaMinutes) p.set("slaMinutes", String(slaMinutes));
+      const { data } = await api.get<ApiResponse<ResponseTimeReport>>(`/reports/response-time?${p}`);
+      return data.data as ResponseTimeReport;
+    },
+    staleTime: 60_000,
+  });
+}
