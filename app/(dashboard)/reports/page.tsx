@@ -12,7 +12,7 @@ import {
   TrendingUp, Users, UsersRound, Target, Award,
   Calendar, RefreshCw, BarChart2, Activity, Layers,
   GitFork, DollarSign, Trophy, ChevronDown, ChevronUp,
-  Loader2, Tag, X, ArrowUpRight, AlertTriangle, Timer, CalendarCheck, Filter,
+  Loader2, Tag, X, AlertTriangle, Timer, CalendarCheck, Filter, ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,8 @@ import {
   useSourceAnalytics,
   useCampaignBreakdown,
   usePipelineBreakdown,
+  useResponseTimeReport,
+  useFollowUpReport,
 } from "@/hooks/useReports";
 import type { PipelineStage, PipelineTrendPoint } from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
@@ -1938,19 +1940,390 @@ function PipelineTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
   );
 }
 
-type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline";
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 6: Response Time SLA
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ResponseTimeTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId,     setTeamId]     = useState("");
+  const [slaMinutes, setSlaMinutes] = useState(30);
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teams = teamsData?.data ?? [];
+
+  const { data, isLoading } = useResponseTimeReport({
+    teamId: teamId || undefined,
+    dateFrom,
+    dateTo,
+    slaMinutes,
+  });
+
+  const summary = data?.summary;
+
+  function fmtMins(m: number | null) {
+    if (m === null || m === undefined) return "—";
+    if (m < 60) return `${Math.round(m)}m`;
+    return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Team:</span>
+          <Select value={teamId || "all"} onValueChange={(v) => setTeamId(v === "all" ? "" : v)}>
+            <SelectTrigger className="h-8 w-40 text-xs border-border/50"><SelectValue placeholder="All Teams" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {teams.map((t) => <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">SLA:</span>
+          <div className="flex rounded-lg border border-border/50 overflow-hidden">
+            {[15, 30, 60, 120].map((m) => (
+              <button key={m} onClick={() => setSlaMinutes(m)}
+                className={cn("px-3 py-1.5 text-xs font-medium transition-colors",
+                  slaMinutes === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50")}>
+                {m < 60 ? `${m}m` : `${m / 60}h`}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <KpiCard title="Total Assigned"   value={summary?.totalAssigned ?? 0}       icon={Users}       gradient="bg-gradient-to-br from-blue-500 to-blue-600"    delay={0}    loading={isLoading} />
+        <KpiCard title="Contacted"        value={summary?.totalContacted ?? 0}       icon={Activity}    gradient="bg-gradient-to-br from-green-500 to-green-600"   delay={0.05} loading={isLoading} />
+        <KpiCard title="SLA Compliance"   value={`${summary?.overallSlaRate ?? 0}%`} icon={Target}      gradient="bg-gradient-to-br from-violet-500 to-violet-600" delay={0.1}  loading={isLoading} />
+        <KpiCard title="Avg Response"     value={fmtMins(summary?.overallAvgResponseMinutes ?? null)} icon={Timer} gradient="bg-gradient-to-br from-orange-500 to-orange-600" delay={0.15} loading={isLoading} />
+        <KpiCard title="Not Contacted"    value={summary?.notContacted ?? 0}         icon={AlertTriangle} gradient={(summary?.notContacted ?? 0) > 0 ? "bg-gradient-to-br from-red-500 to-red-600" : "bg-gradient-to-br from-slate-500 to-slate-600"} delay={0.2} loading={isLoading} className="col-span-2 sm:col-span-1" />
+      </div>
+
+      {/* Agent ranking */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" /> Agent Response Time Ranking
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <div className="space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !data?.agentRanking?.length ? <Empty text="No agent data for this period" /> : (
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[560px]">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="pb-2 text-left font-medium text-muted-foreground w-8">#</th>
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Assigned</th>
+                      <th className="pb-2 text-right font-medium text-green-500">Contacted</th>
+                      <th className="pb-2 text-right font-medium text-violet-400">SLA %</th>
+                      <th className="pb-2 text-right font-medium text-orange-400">Avg Resp</th>
+                      <th className="pb-2 text-right font-medium text-red-400">Not Contacted</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {data.agentRanking.map((a, i) => (
+                      <motion.tr key={a.agentId} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
+                        className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2.5 pr-2"><RankBadge rank={i + 1} /></td>
+                        <td className="py-2.5 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs uppercase">
+                              {a.agentName.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground truncate max-w-[130px]">{a.agentName}</p>
+                              {a.agentEmail && <p className="text-[10px] text-muted-foreground truncate max-w-[130px]">{a.agentEmail}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums">{a.totalAssigned}</td>
+                        <td className="py-2.5 text-right text-green-500 font-semibold tabular-nums">{a.totalContacted}</td>
+                        <td className="py-2.5 text-right">
+                          <span className={cn("font-semibold tabular-nums",
+                            a.slaComplianceRate >= 80 ? "text-green-500" : a.slaComplianceRate >= 50 ? "text-yellow-500" : "text-red-500")}>
+                            {a.slaComplianceRate}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right text-orange-400 tabular-nums">{fmtMins(a.avgResponseMinutes)}</td>
+                        <td className="py-2.5 text-right">
+                          <span className={cn("tabular-nums", a.notContactedCount > 0 ? "text-red-400 font-semibold" : "text-muted-foreground")}>
+                            {a.notContactedCount}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Breached leads */}
+      {(data?.breachedLeads?.length ?? 0) > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Card className="border-red-500/20 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-400">
+                <AlertTriangle className="h-4 w-4" /> SLA Breached Leads ({data!.breachedLeads.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[480px]">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Lead</th>
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Status</th>
+                      <th className="pb-2 text-right font-medium text-red-400">Overdue by</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {data!.breachedLeads.map((lead, i) => (
+                      <motion.tr key={lead._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.03 * i }}
+                        className="hover:bg-muted/30">
+                        <td className="py-2.5 pr-3">
+                          <p className="font-semibold text-foreground">{lead.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{lead.phone}</p>
+                        </td>
+                        <td className="py-2.5 pr-3 text-muted-foreground">{lead.assignedTo?.name ?? "—"}</td>
+                        <td className="py-2.5 text-right">
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{lead.status}</span>
+                        </td>
+                        <td className="py-2.5 text-right text-red-400 font-semibold tabular-nums">
+                          {fmtMins(lead.minutesSinceAssign)}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB 7: Follow-Up Tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FollowUpTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId, setTeamId] = useState("");
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teams = teamsData?.data ?? [];
+
+  const { data, isLoading } = useFollowUpReport({
+    teamId: teamId || undefined,
+    dateFrom,
+    dateTo,
+  });
+
+  const summary = data?.summary;
+
+  function fmtOverdue(mins: number | null) {
+    if (!mins) return "—";
+    if (mins < 60) return `${Math.round(mins)}m overdue`;
+    const h = Math.floor(mins / 60), m = Math.round(mins % 60);
+    return m > 0 ? `${h}h ${m}m overdue` : `${h}h overdue`;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Team filter */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Team:</span>
+        <Select value={teamId || "all"} onValueChange={(v) => setTeamId(v === "all" ? "" : v)}>
+          <SelectTrigger className="h-8 w-40 text-xs border-border/50"><SelectValue placeholder="All Teams" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {teams.map((t) => <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard title="Total Follow-Ups"    value={summary?.totalFollowUps ?? 0}       icon={CalendarCheck} gradient="bg-gradient-to-br from-blue-500 to-blue-600"    delay={0}    loading={isLoading} />
+        <KpiCard title="Agents Tracked"      value={summary?.totalAgentsTracked ?? 0}   icon={Users}         gradient="bg-gradient-to-br from-violet-500 to-violet-600" delay={0.05} loading={isLoading} />
+        <KpiCard title="Leads w/ Follow-Ups" value={summary?.leadsWithFollowUps ?? 0}   icon={Activity}      gradient="bg-gradient-to-br from-green-500 to-green-600"   delay={0.1}  loading={isLoading} />
+        <KpiCard title="Overdue"             value={summary?.overdueCount ?? 0}         icon={AlertTriangle} gradient={(summary?.overdueCount ?? 0) > 0 ? "bg-gradient-to-br from-red-500 to-red-600" : "bg-gradient-to-br from-slate-500 to-slate-600"} delay={0.15} loading={isLoading} />
+      </div>
+
+      {/* Agent ranking */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" /> Agent Follow-Up Ranking
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <div className="space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !data?.agentRanking?.length ? <Empty text="No follow-up data for this period" /> : (
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[440px]">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="pb-2 text-left font-medium text-muted-foreground w-8">#</th>
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Total Follow-Ups</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Unique Leads</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground hidden sm:table-cell">Last Follow-Up</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {data.agentRanking.map((a, i) => (
+                      <motion.tr key={a.agentId} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i }}
+                        className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2.5 pr-2"><RankBadge rank={i + 1} /></td>
+                        <td className="py-2.5 pr-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs uppercase">
+                              {a.agentName.charAt(0)}
+                            </div>
+                            <p className="font-semibold text-foreground truncate max-w-[140px]">{a.agentName}</p>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-right font-bold tabular-nums text-primary">{a.totalFollowUps}</td>
+                        <td className="py-2.5 text-right tabular-nums text-muted-foreground">{a.uniqueLeads}</td>
+                        <td className="py-2.5 text-right text-muted-foreground hidden sm:table-cell text-[10px]">
+                          {a.lastFollowUp ? new Date(a.lastFollowUp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" }) : "—"}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Overdue leads */}
+      {(data?.overdueLeads?.length ?? 0) > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="border-red-500/20 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-400">
+                <AlertTriangle className="h-4 w-4" /> Overdue Follow-Ups ({data!.overdueLeads.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[460px]">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Lead</th>
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                      <th className="pb-2 text-right font-medium text-red-400">Overdue</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {data!.overdueLeads.map((lead, i) => (
+                      <motion.tr key={lead._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.03 * i }}
+                        className="hover:bg-muted/30">
+                        <td className="py-2.5 pr-3">
+                          <p className="font-semibold text-foreground">{lead.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{lead.phone}</p>
+                        </td>
+                        <td className="py-2.5 pr-3 text-muted-foreground">{lead.assignedTo?.name ?? "—"}</td>
+                        <td className="py-2.5 text-right hidden sm:table-cell">
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{lead.status}</span>
+                        </td>
+                        <td className="py-2.5 text-right text-red-400 font-semibold tabular-nums">
+                          {fmtOverdue(lead.overdueByMinutes)}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Lead breakdown */}
+      {(data?.leadBreakdown?.length ?? 0) > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" /> Lead Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="overflow-x-auto -mx-2 px-2">
+                <table className="w-full text-xs min-w-[500px]">
+                  <thead>
+                    <tr className="border-b border-border/50">
+                      <th className="pb-2 text-left font-medium text-muted-foreground">Lead</th>
+                      <th className="pb-2 text-left font-medium text-muted-foreground hidden sm:table-cell">Agent</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Follow-Ups</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground hidden sm:table-cell">Status</th>
+                      <th className="pb-2 text-right font-medium text-muted-foreground">Next Due</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {data!.leadBreakdown.map((lead, i) => {
+                      const isOverdue = lead.nextFollowUpAt && new Date(lead.nextFollowUpAt) < new Date();
+                      return (
+                        <motion.tr key={lead._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.02 * i }}
+                          className="hover:bg-muted/30">
+                          <td className="py-2.5 pr-3">
+                            <p className="font-semibold text-foreground truncate max-w-[130px]">{lead.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{lead.phone}</p>
+                          </td>
+                          <td className="py-2.5 pr-3 text-muted-foreground hidden sm:table-cell truncate max-w-[110px]">{lead.agentName}</td>
+                          <td className="py-2.5 text-right font-bold tabular-nums text-primary">{lead.followUpCount}</td>
+                          <td className="py-2.5 text-right hidden sm:table-cell">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] capitalize">{lead.status}</span>
+                          </td>
+                          <td className="py-2.5 text-right">
+                            {lead.nextFollowUpAt ? (
+                              <span className={cn("text-[10px] font-medium tabular-nums", isOverdue ? "text-red-400" : "text-green-400")}>
+                                {new Date(lead.nextFollowUpAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}
+                              </span>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Overview",      shortLabel: "Overview", icon: BarChart2    },
-  { id: "split",    label: "Lead Splitting", shortLabel: "Leads",    icon: GitFork      },
-  { id: "revenue",  label: "Revenue",        shortLabel: "Revenue",  icon: DollarSign   },
-  { id: "sources",  label: "Sources",        shortLabel: "Sources",  icon: TrendingUp   },
-  { id: "pipeline", label: "Pipeline",       shortLabel: "Pipeline", icon: Filter       },
-];
-
-const EXTRA_LINKS = [
-  { href: "/reports/response-time", label: "Response Time SLA",   icon: Timer },
-  { href: "/reports/followups",     label: "Follow-Up Tracking",  icon: CalendarCheck },
+  { id: "overview",       label: "Overview",          shortLabel: "Overview",  icon: BarChart2    },
+  { id: "split",          label: "Lead Splitting",     shortLabel: "Leads",     icon: GitFork      },
+  { id: "revenue",        label: "Revenue",            shortLabel: "Revenue",   icon: DollarSign   },
+  { id: "sources",        label: "Sources",            shortLabel: "Sources",   icon: TrendingUp   },
+  { id: "pipeline",       label: "Pipeline",           shortLabel: "Pipeline",  icon: Filter       },
+  { id: "response-time",  label: "Response Time SLA",  shortLabel: "SLA",       icon: Timer        },
+  { id: "followup",       label: "Follow-Up Tracking", shortLabel: "Follow-Up", icon: CalendarCheck },
 ];
 
 function ReportsPageContent() {
@@ -2052,15 +2425,15 @@ function ReportsPageContent() {
             <ExportPdfDialog type="overall" entityName="CRM Overall" />
           </div>
 
-          {/* Tabs — pill style with spring animation */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-fit">
+          {/* Tabs — scrollable on mobile */}
+          <div className="overflow-x-auto -mx-6 px-6 pb-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="flex gap-1 p-1 rounded-xl bg-muted/50 w-max">
               {TABS.map(({ id, label, shortLabel, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    "relative flex items-center gap-2 px-3 sm:px-4 py-1.5 text-sm font-medium transition-colors rounded-lg",
+                    "relative flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors rounded-lg whitespace-nowrap",
                     activeTab === id
                       ? "text-primary"
                       : "text-muted-foreground hover:text-foreground",
@@ -2073,23 +2446,12 @@ function ReportsPageContent() {
                       transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
                     />
                   )}
-                  <Icon className="relative z-10 h-4 w-4 shrink-0" />
+                  <Icon className="relative z-10 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   <span className="relative z-10 hidden sm:inline">{label}</span>
                   <span className="relative z-10 sm:hidden">{shortLabel}</span>
                 </button>
               ))}
             </div>
-            {EXTRA_LINKS.map(({ href, label, icon: Icon }) => (
-              <a
-                key={href}
-                href={href}
-                className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-orange-500/40 hover:text-orange-500"
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-                <ArrowUpRight className="h-3 w-3 opacity-50" />
-              </a>
-            ))}
           </div>
         </div>
 
@@ -2124,6 +2486,14 @@ function ReportsPageContent() {
           ) : activeTab === "pipeline" ? (
             <motion.div key="pipeline" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <PipelineTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "response-time" ? (
+            <motion.div key="response-time" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <ResponseTimeTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "followup" ? (
+            <motion.div key="followup" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <FollowUpTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : (
             <motion.div key="sources" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
