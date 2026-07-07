@@ -46,12 +46,14 @@ import {
   useSalesFunnel,
   useManagementAlerts,
   useAuditReport,
+  useMemberSplitReport,
 } from "@/hooks/useReports";
 import type {
   PipelineStage, PipelineTrendPoint, LeadQualityCampaign, LeadQualitySourceSummary,
   FunnelStage, FunnelTeamRow, FunnelAgentRow,
   AlertLead, ManagementAlertsReport,
   AuditEvent,
+  MemberSplitRow, DailyAssignmentPoint, SourceTableRow,
 } from "@/hooks/useReports";
 import { useTeams } from "@/hooks/useTeams";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -756,9 +758,12 @@ function OverviewTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string })
 function LeadSplitTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
   const [splitPeriod, setSplitPeriod] = useState<SplitPeriod>("monthly");
   const [focusTeam,   setFocusTeam]   = useState<string>("all");
+  const [memberTeamId, setMemberTeamId] = useState<string>("");
 
-  const query = useReportTeamSplit(splitPeriod, dateFrom, dateTo);
+  const query      = useReportTeamSplit(splitPeriod, dateFrom, dateTo);
+  const memberQuery = useMemberSplitReport({ teamId: memberTeamId || undefined, dateFrom, dateTo });
   const data  = query.data;
+  const mdata = memberQuery.data;
 
   const teams    = data?.teams    ?? [];
   const timeline = data?.timeline ?? [];
@@ -1016,6 +1021,335 @@ function LeadSplitTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }
                   })()}
                 </table>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ── Member Split Panels ─────────────────────────────────────────── */}
+      <MemberSplitPanels
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        teamId={memberTeamId}
+        setTeamId={setMemberTeamId}
+      />
+    </div>
+  );
+}
+
+// ── Member Split Panels (sub-component to keep LeadSplitTab readable) ────────
+
+const MEMBER_PALETTE = [
+  "#6366f1","#22c55e","#f97316","#14b8a6","#eab308","#ef4444",
+  "#8b5cf6","#3b82f6","#ec4899","#84cc16","#06b6d4","#f43f5e",
+  "#a78bfa","#34d399","#fb923c","#38bdf8",
+];
+
+function MemberSplitPanels({
+  dateFrom, dateTo, teamId, setTeamId,
+}: {
+  dateFrom: string; dateTo: string; teamId: string; setTeamId: (v: string) => void;
+}) {
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teamsList = teamsData?.data ?? [];
+  const { data, isLoading } = useMemberSplitReport({ teamId: teamId || undefined, dateFrom, dateTo });
+
+  const members      = data?.members      ?? [];
+  const daily        = data?.daily        ?? [];
+  const sourceTable  = data?.sourceTable  ?? [];
+  const sourceMembers = data?.sourceMembers ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* Team filter for member panels */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Filter team:</span>
+        </div>
+        <Select value={teamId || "all"} onValueChange={(v) => setTeamId(v === "all" ? "" : v)}>
+          <SelectTrigger className="h-8 w-44 text-xs border-border/50">
+            <SelectValue placeholder="All teams" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Teams</SelectItem>
+            {teamsList.map((t: { _id: string; name: string }) => (
+              <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {data && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            {data.totalAssigned.toLocaleString()} total assignments
+          </span>
+        )}
+      </div>
+
+      {/* ── Panel 1: Daily Assignment Timeline ─────────────────────────── */}
+      <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.15 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              Daily Assignment Timeline
+              <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                (leads auto-assigned per day)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : daily.length === 0 ? (
+              <Empty text="No assignments in this period" />
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={daily} margin={{ top:5, right:20, left:-15, bottom:0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize:9, fill:"hsl(var(--muted-foreground))" }}
+                    tickLine={false} axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize:9, fill:"hsl(var(--muted-foreground))" }}
+                    tickLine={false} axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="rounded-xl border border-border/50 bg-card/95 backdrop-blur-sm px-3 py-2 shadow-xl text-xs">
+                          <p className="font-semibold text-foreground mb-1">{label}</p>
+                          <p className="text-primary font-medium">{payload[0].value} assigned</p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill:"hsl(var(--muted))", opacity:0.3 }}
+                  />
+                  <Bar dataKey="count" name="Assigned" fill="#6366f1" radius={[4,4,0,0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ── Panel 2: Member-wise Assignment Count ──────────────────────── */}
+      <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <UsersRound className="h-4 w-4 text-primary" />
+              Member-wise Assignment Count
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <Skeleton className="h-[260px] w-full" />
+            ) : members.length === 0 ? (
+              <Empty text="No member assignment data for this period" />
+            ) : (
+              <div className="space-y-4">
+                {/* Horizontal bar chart */}
+                <div className="space-y-2">
+                  {members.map((m: MemberSplitRow, i: number) => {
+                    const maxTotal = members[0].total || 1;
+                    const pct      = Math.round((m.total / maxTotal) * 100);
+                    const color    = MEMBER_PALETTE[i % MEMBER_PALETTE.length];
+                    return (
+                      <motion.div
+                        key={m.memberId}
+                        initial={{ opacity:0, x:-10 }}
+                        animate={{ opacity:1, x:0 }}
+                        transition={{ delay: i * 0.04 }}
+                        className="flex items-center gap-3"
+                      >
+                        <span className="text-xs text-muted-foreground w-4 shrink-0 text-right">{i+1}</span>
+                        <span className="text-xs font-medium w-28 shrink-0 truncate">{m.memberName}</span>
+                        <div className="flex-1 h-5 bg-muted/40 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ background: color }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.6, delay: i * 0.04, ease: "easeOut" }}
+                          />
+                        </div>
+                        <span className="text-xs font-bold tabular-nums w-8 text-right shrink-0">{m.total}</span>
+                        <span className="text-[10px] text-green-500 w-12 shrink-0">{m.conversionRate}% conv</span>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Summary table */}
+                <div className="overflow-x-auto mt-4">
+                  <table className="w-full text-xs" style={{ minWidth: "480px" }}>
+                    <thead>
+                      <tr className="border-b border-border/40">
+                        <th className="pb-2 text-left text-muted-foreground font-medium">#</th>
+                        <th className="pb-2 text-left text-muted-foreground font-medium">Member</th>
+                        <th className="pb-2 text-right text-muted-foreground font-medium">Assigned</th>
+                        <th className="pb-2 text-right text-green-500 font-medium">Closed</th>
+                        <th className="pb-2 text-right text-red-500 font-medium">Lost</th>
+                        <th className="pb-2 text-right text-blue-500 font-medium">Follow-Up</th>
+                        <th className="pb-2 text-right text-muted-foreground font-medium">New/Asgn</th>
+                        <th className="pb-2 text-right text-muted-foreground font-medium">Conv%</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20">
+                      {members.map((m: MemberSplitRow, i: number) => (
+                        <motion.tr
+                          key={m.memberId}
+                          initial={{ opacity:0 }}
+                          animate={{ opacity:1 }}
+                          transition={{ delay: i * 0.03 }}
+                          className="hover:bg-muted/20 transition-colors"
+                        >
+                          <td className="py-2 pr-2">
+                            <span className="text-muted-foreground">{m.rank}</span>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full shrink-0" style={{ background: MEMBER_PALETTE[i % MEMBER_PALETTE.length] }} />
+                              <span className="font-medium text-foreground truncate max-w-[140px]">{m.memberName}</span>
+                            </div>
+                          </td>
+                          <td className="py-2 text-right font-bold tabular-nums">{m.total}</td>
+                          <td className="py-2 text-right tabular-nums text-green-500 font-medium">{m.closed}</td>
+                          <td className="py-2 text-right tabular-nums text-red-500">{m.lost}</td>
+                          <td className="py-2 text-right tabular-nums text-blue-500">{m.followup}</td>
+                          <td className="py-2 text-right tabular-nums text-muted-foreground">{m.new_assigned}</td>
+                          <td className="py-2 text-right">
+                            <span className={cn(
+                              "font-semibold tabular-nums",
+                              m.conversionRate >= 50 ? "text-green-500"
+                              : m.conversionRate >= 25 ? "text-yellow-500"
+                              : "text-muted-foreground",
+                            )}>
+                              {m.conversionRate}%
+                            </span>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                    {/* Totals row */}
+                    {members.length > 1 && (
+                      <tfoot>
+                        <tr className="border-t-2 border-border bg-muted/20">
+                          <td />
+                          <td className="py-2 font-bold text-foreground">Total</td>
+                          <td className="py-2 text-right font-bold tabular-nums">{members.reduce((s, m) => s + m.total, 0)}</td>
+                          <td className="py-2 text-right font-bold tabular-nums text-green-500">{members.reduce((s, m) => s + m.closed, 0)}</td>
+                          <td className="py-2 text-right font-semibold tabular-nums text-red-500">{members.reduce((s, m) => s + m.lost, 0)}</td>
+                          <td className="py-2 text-right font-semibold tabular-nums text-blue-500">{members.reduce((s, m) => s + m.followup, 0)}</td>
+                          <td className="py-2 text-right font-semibold tabular-nums text-muted-foreground">{members.reduce((s, m) => s + m.new_assigned, 0)}</td>
+                          <td className="py-2 text-right">
+                            {(() => {
+                              const tot = members.reduce((s, m) => s + m.total, 0);
+                              const cls = members.reduce((s, m) => s + m.closed, 0);
+                              const r   = tot > 0 ? +((cls / tot) * 100).toFixed(1) : 0;
+                              return <span className={cn("font-bold tabular-nums", r>=50?"text-green-500":r>=25?"text-yellow-500":"text-muted-foreground")}>{r}%</span>;
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* ── Panel 3: Source-wise Split Cross-tab ───────────────────────── */}
+      {(sourceTable.length > 0 || isLoading) && (
+        <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.25 }}>
+          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Tag className="h-4 w-4 text-primary" />
+                Source-wise Split
+                <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                  (lead source → member assignment count)
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {isLoading ? (
+                <Skeleton className="h-[180px] w-full" />
+              ) : sourceTable.length === 0 ? (
+                <Empty text="No source data for this period" />
+              ) : (
+                <div className="overflow-x-auto -mx-2 px-2">
+                  <table className="w-full text-xs" style={{ minWidth: `${Math.max(480, 160 + sourceMembers.length * 90)}px` }}>
+                    <thead>
+                      <tr className="border-b border-border/40">
+                        <th className="pb-2 text-left text-muted-foreground font-medium w-28">Source</th>
+                        <th className="pb-2 text-right text-muted-foreground font-medium">Total</th>
+                        {sourceMembers.map((m, i) => (
+                          <th key={m} className="pb-2 text-right font-medium" style={{ color: MEMBER_PALETTE[i % MEMBER_PALETTE.length] }}>
+                            {m.split(" ")[0]}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20">
+                      {sourceTable.map((row: SourceTableRow, i: number) => {
+                        const maxTotal = sourceTable[0].total || 1;
+                        const barPct   = Math.round(((row.total as number) / maxTotal) * 100);
+                        return (
+                          <motion.tr
+                            key={row.source}
+                            initial={{ opacity:0, x:-5 }}
+                            animate={{ opacity:1, x:0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className="hover:bg-muted/20 transition-colors"
+                          >
+                            <td className="py-2.5 pr-3">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="h-1.5 rounded-full bg-primary/60 shrink-0 transition-all"
+                                  style={{ width: `${Math.max(4, barPct * 0.5)}px` }}
+                                />
+                                <span className="font-medium text-foreground capitalize truncate max-w-[90px]">
+                                  {row.source}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-2.5 text-right font-bold tabular-nums">{row.total}</td>
+                            {sourceMembers.map((m) => (
+                              <td key={m} className="py-2.5 text-right tabular-nums text-muted-foreground">
+                                {(row[m] as number) || 0}
+                              </td>
+                            ))}
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                    {/* Source totals footer */}
+                    {sourceTable.length > 1 && (
+                      <tfoot>
+                        <tr className="border-t-2 border-border bg-muted/20">
+                          <td className="py-2 font-bold text-foreground">Total</td>
+                          <td className="py-2 text-right font-bold tabular-nums">
+                            {sourceTable.reduce((s, r) => s + (r.total as number), 0)}
+                          </td>
+                          {sourceMembers.map((m) => (
+                            <td key={m} className="py-2 text-right font-semibold tabular-nums">
+                              {sourceTable.reduce((s, r) => s + ((r[m] as number) || 0), 0)}
+                            </td>
+                          ))}
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

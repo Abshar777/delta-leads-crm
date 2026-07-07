@@ -600,3 +600,52 @@ export function useAuditReport(params: { teamId?: string; dateFrom?: string; dat
     staleTime: 30_000,
   });
 }
+
+// ── Member Split Report ────────────────────────────────────────────────────────
+
+export interface MemberSplitRow {
+  rank:           number;
+  memberId:       string;
+  memberName:     string;
+  total:          number;
+  closed:         number;
+  lost:           number;
+  followup:       number;
+  new_assigned:   number;
+  conversionRate: number;
+}
+
+export interface DailyAssignmentPoint {
+  date:  string;
+  count: number;
+}
+
+export interface SourceTableRow {
+  source: string;
+  total:  number;
+  [memberName: string]: number | string;
+}
+
+export interface MemberSplitReport {
+  members:       MemberSplitRow[];
+  daily:         DailyAssignmentPoint[];
+  sourceTable:   SourceTableRow[];
+  sourceMembers: string[];
+  totalAssigned: number;
+}
+
+export function useMemberSplitReport(params: { teamId?: string; dateFrom?: string; dateTo?: string }) {
+  const { teamId, dateFrom, dateTo } = params;
+  return useQuery<MemberSplitReport>({
+    queryKey: ["reports", "member-split", teamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId",   teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo",   dateTo);
+      const { data } = await api.get<ApiResponse<MemberSplitReport>>(`/reports/member-split?${p}`);
+      return data.data as MemberSplitReport;
+    },
+    staleTime: 60_000,
+  });
+}
