@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Users, Zap, Phone, Mail, Calendar,
   RefreshCw, Timer, PackageOpen, ChevronDown, ChevronUp,
-  ArrowRight, Inbox, Shuffle, BarChart2,
+  ArrowRight, Inbox, Shuffle, BarChart2, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
@@ -205,6 +205,153 @@ function LeadRow({ lead, index }: { lead: UpcomingBatchData["unassignedLeads"][0
   );
 }
 
+// ─── Source colours (cycles through a fixed palette) ─────────────────────────
+
+const SOURCE_COLOURS = [
+  "bg-blue-500",
+  "bg-violet-500",
+  "bg-orange-500",
+  "bg-green-500",
+  "bg-pink-500",
+  "bg-teal-500",
+  "bg-yellow-500",
+  "bg-red-500",
+];
+
+// ─── Source breakdown panel ───────────────────────────────────────────────────
+
+function SourceBreakdown({
+  leads,
+  totalUnassigned,
+  splitMode,
+}: {
+  leads: UpcomingBatchData["unassignedLeads"];
+  totalUnassigned: number;
+  splitMode: "round_robin" | "equal_load";
+}) {
+  const [open, setOpen] = useState(true);
+
+  const sourceSplit = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const lead of leads) {
+      const s = lead.source?.trim() || "Unknown";
+      map.set(s, (map.get(s) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [leads]);
+
+  if (sourceSplit.length === 0) return null;
+
+  const max = sourceSplit[0].count;
+
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10">
+            <TrendingUp className="h-3.5 w-3.5 text-blue-400" />
+          </div>
+          <span className="text-sm font-semibold text-foreground">Source Breakdown</span>
+          <span className="text-xs text-muted-foreground">
+            · {sourceSplit.length} source{sourceSplit.length !== 1 ? "s" : ""}
+          </span>
+          {splitMode === "round_robin" && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
+              <Shuffle className="h-2.5 w-2.5" />
+              Source-wise RR
+            </span>
+          )}
+        </div>
+        {open
+          ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+        }
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-4 border-t border-border/30 pt-4 space-y-3">
+              {splitMode === "round_robin" && (
+                <p className="text-[11px] text-muted-foreground bg-violet-500/5 border border-violet-500/15 rounded-lg px-3 py-2">
+                  In <span className="font-semibold text-violet-400">round-robin</span> mode, leads from each source are
+                  distributed to members sequentially using a per-source cursor — ensuring fair rotation across all sources.
+                </p>
+              )}
+
+              {/* Source proportion mini-chart */}
+              <div className="flex h-2 rounded-full overflow-hidden gap-px">
+                {sourceSplit.map(({ source, count }, idx) => (
+                  <motion.div
+                    key={source}
+                    className={`${SOURCE_COLOURS[idx % SOURCE_COLOURS.length]} h-full`}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    style={{ width: `${(count / totalUnassigned) * 100}%`, transformOrigin: "left" }}
+                    transition={{ duration: 0.5, delay: idx * 0.05, ease: "easeOut" }}
+                    title={`${source}: ${count}`}
+                  />
+                ))}
+              </div>
+
+              {/* Per-source rows */}
+              <div className="space-y-2.5 mt-1">
+                {sourceSplit.map(({ source, count }, idx) => {
+                  const pct = max > 0 ? (count / max) * 100 : 0;
+                  const colour = SOURCE_COLOURS[idx % SOURCE_COLOURS.length];
+                  return (
+                    <motion.div
+                      key={source}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                      className="flex items-center gap-3"
+                    >
+                      {/* Colour dot */}
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${colour}`} />
+                      {/* Source name */}
+                      <span className="w-28 truncate text-xs font-medium text-foreground capitalize shrink-0">
+                        {source}
+                      </span>
+                      {/* Bar */}
+                      <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${colour}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.04 }}
+                        />
+                      </div>
+                      {/* Count + pct */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-bold text-foreground tabular-nums">{count}</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                          ({Math.round((count / totalUnassigned) * 100)}%)
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface UpcomingBatchProps {
@@ -377,6 +524,13 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
           </AnimatePresence>
         </div>
       )}
+
+      {/* ── Source breakdown ── */}
+      <SourceBreakdown
+        leads={unassignedLeads}
+        totalUnassigned={totalUnassigned}
+        splitMode={splitMode}
+      />
 
       {/* ── Unassigned leads list ── */}
       <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
