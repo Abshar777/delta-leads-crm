@@ -49,6 +49,7 @@ import { PaymentPanel } from "@/components/leads/PaymentPanel";
 import { CallsPanel } from "@/components/leads/CallsPanel";
 import { FollowUpPanel } from "@/components/leads/FollowUpPanel";
 import { ClickToCall } from "@/components/leads/ClickToCall";
+import { LostReasonModal } from "@/components/leads/LostReasonModal";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
@@ -464,7 +465,9 @@ export default function LeadDetailPage() {
   const updateStatus = useUpdateLeadStatus();
   const updateLead = useUpdateLead();
   const { data: existingStudent } = useStudentByLeadId(lead?._id ?? "");
-  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showStudentModal,  setShowStudentModal]  = useState(false);
+  const [lostModalOpen,     setLostModalOpen]     = useState(false);
+  const [pendingLostStatus, setPendingLostStatus] = useState<LeadStatus | null>(null);
   const assignLead = useAssignLead();
   const assignToTeam = useAssignLeadToTeam();
   const transferToTeam = useTransferLeadToTeam();
@@ -865,11 +868,15 @@ export default function LeadDetailPage() {
                       <Select
                         value={lead.status}
                         onValueChange={(val) => {
-                          if (val === "closed" && !existingStudent) {
+                          const newStatus = val as LeadStatus;
+                          if (newStatus === "lost") {
+                            setPendingLostStatus(newStatus);
+                            setLostModalOpen(true);
+                          } else if (newStatus === "closed" && !existingStudent) {
                             updateStatus.mutate({ id: lead._id, status: "closed" });
                             setShowStudentModal(true);
                           } else {
-                            updateStatus.mutate({ id: lead._id, status: val as LeadStatus });
+                            updateStatus.mutate({ id: lead._id, status: newStatus });
                           }
                         }}
                         disabled={updateStatus.isPending}
@@ -1354,6 +1361,20 @@ export default function LeadDetailPage() {
           onCreated={() => setShowStudentModal(false)}
         />
       )}
+
+      {/* Lost Reason Modal */}
+      <LostReasonModal
+        open={lostModalOpen}
+        leadName={lead.name}
+        loading={updateStatus.isPending}
+        onConfirm={(reason, notes) => {
+          updateStatus.mutate(
+            { id: lead._id, status: "lost", lostReason: reason, lostNotes: notes || undefined },
+            { onSettled: () => { setLostModalOpen(false); setPendingLostStatus(null); } },
+          );
+        }}
+        onCancel={() => { setLostModalOpen(false); setPendingLostStatus(null); }}
+      />
     </div>
   );
 }

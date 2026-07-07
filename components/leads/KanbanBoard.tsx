@@ -50,6 +50,7 @@ import type { User } from "@/types";
 import type { Course } from "@/types/course";
 import type { Team } from "@/types/team";
 import LeadDialog from "@/components/leads/LeadDialog";
+import { LostReasonModal } from "@/components/leads/LostReasonModal";
 import { fmtFull, getCurrencySymbol } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 
@@ -947,8 +948,9 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
   const [paymentLead, setPaymentLead]       = useState<Lead | null>(null);
   const [reminderLead, setReminderLead]     = useState<Lead | null>(null);
   const [noteLead, setNoteLead]             = useState<Lead | null>(null);
+  const [lostModalLead, setLostModalLead]   = useState<{ leadId: string; name: string } | null>(null);
 
-  const { mutate: updateStatus } = useUpdateLeadStatus();
+  const { mutate: updateStatus, isPending: statusPending } = useUpdateLeadStatus();
   const { mutate: updateCNC }    = useUpdateCallNotConnected();
 
   const { data, isLoading } = useLeads({ ...filters, page: 1, limit: 500 });
@@ -997,12 +999,18 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
 
     // Card → drop zone
     if (activeType === "card" && overId.startsWith("zone:")) {
-      const leadId      = active.id as string;
+      const leadId       = active.id as string;
       const targetStatus = overId.replace("zone:", "") as LeadStatus;
       const lead = allLeads.find((l) => l._id === leadId);
       if (!lead) return;
       const currentStatus = localOverrides[leadId] ?? lead.status;
       if (currentStatus === targetStatus) return;
+
+      if (targetStatus === "lost") {
+        // Don't apply optimistic update yet — wait for reason
+        setLostModalLead({ leadId, name: lead.name });
+        return;
+      }
 
       setLocalOverrides((prev) => ({ ...prev, [leadId]: targetStatus }));
       updateStatus(
@@ -1112,6 +1120,27 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
       {noteLead && (
         <QuickNotesDialog lead={noteLead} open={!!noteLead} onClose={() => setNoteLead(null)} />
       )}
+
+      {/* Lost reason modal — fires when a card is dragged to the Lost column */}
+      <LostReasonModal
+        open={!!lostModalLead}
+        leadName={lostModalLead?.name}
+        loading={statusPending}
+        onConfirm={(reason, notes) => {
+          if (!lostModalLead) return;
+          const { leadId } = lostModalLead;
+          setLocalOverrides((prev) => ({ ...prev, [leadId]: "lost" }));
+          updateStatus(
+            { id: leadId, status: "lost", lostReason: reason, lostNotes: notes || undefined },
+            {
+              onSuccess: () => setLocalOverrides((p) => { const n = { ...p }; delete n[leadId]; return n; }),
+              onError:   () => setLocalOverrides((p) => { const n = { ...p }; delete n[leadId]; return n; }),
+              onSettled: () => setLostModalLead(null),
+            },
+          );
+        }}
+        onCancel={() => setLostModalLead(null)}
+      />
     </>
   );
 }

@@ -45,6 +45,7 @@ import type { User } from "@/types";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 import { CreateStudentModal } from "@/components/students/CreateStudentModal";
 import { useStudentByLeadId } from "@/hooks/useStudents";
+import { LostReasonModal } from "@/components/leads/LostReasonModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -488,6 +489,12 @@ function LeadsPageContent() {
   const [bulkStatus, setBulkStatus] = useState<LeadStatus>("followup");
   const [bulkTeamId, setBulkTeamId] = useState<string>("");
 
+  // Lost reason modal — shared across all single-status change points
+  const [lostModalOpen,     setLostModalOpen]     = useState(false);
+  const [lostModalLead,     setLostModalLead]      = useState<Lead | null>(null);
+  // Lost reason modal for bulk flow
+  const [bulkLostModalOpen, setBulkLostModalOpen]  = useState(false);
+
   const bulkUpdateStatus = useBulkUpdateLeadStatus();
   const bulkDeleteLeads = useBulkDeleteLeads();
   const bulkAssignTeam = useBulkAssignLeadsToTeam();
@@ -649,8 +656,10 @@ function LeadsPageContent() {
   const handleAssign = (l: Lead) => { setSelectedLead(l); setAssignOpen(true); };
 
   function handleStatusChange(l: Lead, s: LeadStatus) {
-    if (s === "closed") {
-      // Check for existing student handled inside the modal via hook
+    if (s === "lost") {
+      setLostModalLead(l);
+      setLostModalOpen(true);
+    } else if (s === "closed") {
       setPendingStatus({ lead: l, status: s });
       setStudentModalLead(l);
     } else {
@@ -1496,6 +1505,35 @@ function LeadsPageContent() {
       <DeleteLeadDialog open={deleteOpen} onOpenChange={setDeleteOpen} lead={selectedLead} />
       <AssignLeadDialog open={assignOpen} onOpenChange={setAssignOpen} lead={selectedLead} />
 
+      {/* Single-lead lost reason modal */}
+      <LostReasonModal
+        open={lostModalOpen}
+        leadName={lostModalLead?.name}
+        loading={bulkUpdateStatus.isPending}
+        onConfirm={(reason, notes) => {
+          if (!lostModalLead) return;
+          updateStatus(
+            { id: lostModalLead._id, status: "lost", lostReason: reason, lostNotes: notes || undefined },
+            { onSettled: () => { setLostModalOpen(false); setLostModalLead(null); } },
+          );
+        }}
+        onCancel={() => { setLostModalOpen(false); setLostModalLead(null); }}
+      />
+
+      {/* Bulk lost reason modal */}
+      <LostReasonModal
+        open={bulkLostModalOpen}
+        leadName={`${selectedIds.size} lead(s)`}
+        loading={bulkUpdateStatus.isPending}
+        onConfirm={(reason, notes) => {
+          bulkUpdateStatus.mutate(
+            { leadIds: Array.from(selectedIds), status: "lost", lostReason: reason, lostNotes: notes || undefined },
+            { onSettled: () => { setBulkLostModalOpen(false); setSelectedIds(new Set()); } },
+          );
+        }}
+        onCancel={() => setBulkLostModalOpen(false)}
+      />
+
       {/* ── Bulk: Change Status ───────────────────────────────────────────────── */}
       <ResponsiveDialog open={bulkStatusOpen} onOpenChange={setBulkStatusOpen}>
         <ResponsiveDialogContent desktopClassName="max-w-sm">
@@ -1531,10 +1569,15 @@ function LeadsPageContent() {
               size="sm"
               disabled={bulkUpdateStatus.isPending}
               onClick={() => {
-                bulkUpdateStatus.mutate(
-                  { leadIds: Array.from(selectedIds), status: bulkStatus },
-                  { onSuccess: () => { setBulkStatusOpen(false); setSelectedIds(new Set()); } },
-                );
+                if (bulkStatus === "lost") {
+                  setBulkStatusOpen(false);
+                  setBulkLostModalOpen(true);
+                } else {
+                  bulkUpdateStatus.mutate(
+                    { leadIds: Array.from(selectedIds), status: bulkStatus },
+                    { onSuccess: () => { setBulkStatusOpen(false); setSelectedIds(new Set()); } },
+                  );
+                }
               }}
             >
               {bulkUpdateStatus.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
