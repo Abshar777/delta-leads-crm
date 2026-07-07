@@ -218,18 +218,63 @@ const SOURCE_COLOURS = [
   "bg-red-500",
 ];
 
+// ─── Estimate per-member source breakdown (proportional) ─────────────────────
+// Since per-source cursor positions are unknown client-side, we distribute
+// each member's leadsToReceive proportionally across sources by batch mix.
+
+function estimateMemberSourceCounts(
+  leads: UpcomingBatchData["unassignedLeads"],
+  distribution: UpcomingBatchData["previewDistribution"],
+): Map<string, Map<string, number>> {
+  const result = new Map<string, Map<string, number>>();
+  for (const m of distribution) result.set(m.memberId, new Map());
+
+  const total = leads.length;
+  if (total === 0 || distribution.length === 0) return result;
+
+  // Count per source
+  const sourceCount = new Map<string, number>();
+  for (const lead of leads) {
+    const s = lead.source?.trim() || "Unknown";
+    sourceCount.set(s, (sourceCount.get(s) ?? 0) + 1);
+  }
+  const sources = Array.from(sourceCount.entries()).sort((a, b) => b[1] - a[1]);
+
+  for (const m of distribution) {
+    if (m.leadsToReceive === 0) continue;
+    const mm = result.get(m.memberId)!;
+    // Largest-remainder method: floor first, then top up from highest remainders
+    const quotas = sources.map(([source, count]) => {
+      const exact = m.leadsToReceive * (count / total);
+      return { source, floor: Math.floor(exact), remainder: exact - Math.floor(exact) };
+    });
+    let allocated = quotas.reduce((s, q) => s + q.floor, 0);
+    const leftover = m.leadsToReceive - allocated;
+    quotas.sort((a, b) => b.remainder - a.remainder);
+    for (let i = 0; i < leftover; i++) quotas[i % quotas.length].floor += 1;
+    for (const { source, floor } of quotas) {
+      if (floor > 0) mm.set(source, floor);
+    }
+  }
+
+  return result;
+}
+
 // ─── Source breakdown panel ───────────────────────────────────────────────────
 
 function SourceBreakdown({
   leads,
   totalUnassigned,
   splitMode,
+  previewDistribution,
 }: {
   leads: UpcomingBatchData["unassignedLeads"];
   totalUnassigned: number;
   splitMode: "round_robin" | "equal_load";
+  previewDistribution: UpcomingBatchData["previewDistribution"];
 }) {
   const [open, setOpen] = useState(true);
+  const [view, setView] = useState<"source" | "member">("source");
 
   const sourceSplit = useMemo(() => {
     const map = new Map<string, number>();
@@ -242,12 +287,27 @@ function SourceBreakdown({
       .sort((a, b) => b.count - a.count);
   }, [leads]);
 
+  // source colour index keyed by source name
+  const sourceColourMap = useMemo(() => {
+    const m = new Map<string, string>();
+    sourceSplit.forEach(({ source }, idx) => {
+      m.set(source, SOURCE_COLOURS[idx % SOURCE_COLOURS.length]);
+    });
+    return m;
+  }, [sourceSplit]);
+
+  const memberSourceCounts = useMemo(
+    () => estimateMemberSourceCounts(leads, previewDistribution),
+    [leads, previewDistribution],
+  );
+
   if (sourceSplit.length === 0) return null;
 
   const max = sourceSplit[0].count;
 
   return (
     <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+      {/* ── Header ── */}
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
@@ -282,68 +342,144 @@ function SourceBreakdown({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-4 border-t border-border/30 pt-4 space-y-3">
-              {splitMode === "round_robin" && (
-                <p className="text-[11px] text-muted-foreground bg-violet-500/5 border border-violet-500/15 rounded-lg px-3 py-2">
-                  In <span className="font-semibold text-violet-400">round-robin</span> mode, leads from each source are
-                  distributed to members sequentially using a per-source cursor — ensuring fair rotation across all sources.
-                </p>
-              )}
-
-              {/* Source proportion mini-chart */}
-              <div className="flex h-2 rounded-full overflow-hidden gap-px">
-                {sourceSplit.map(({ source, count }, idx) => (
-                  <motion.div
-                    key={source}
-                    className={`${SOURCE_COLOURS[idx % SOURCE_COLOURS.length]} h-full`}
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    style={{ width: `${(count / totalUnassigned) * 100}%`, transformOrigin: "left" }}
-                    transition={{ duration: 0.5, delay: idx * 0.05, ease: "easeOut" }}
-                    title={`${source}: ${count}`}
-                  />
+            <div className="border-t border-border/30">
+              {/* ── View toggle tabs ── */}
+              <div className="flex items-center gap-1 px-5 pt-3 pb-0">
+                {(["source", "member"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+                      view === v
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                    }`}
+                  >
+                    {v === "source" ? "By Source" : "By Member"}
+                  </button>
                 ))}
               </div>
 
-              {/* Per-source rows */}
-              <div className="space-y-2.5 mt-1">
-                {sourceSplit.map(({ source, count }, idx) => {
-                  const pct = max > 0 ? (count / max) * 100 : 0;
-                  const colour = SOURCE_COLOURS[idx % SOURCE_COLOURS.length];
-                  return (
-                    <motion.div
-                      key={source}
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.04 }}
-                      className="flex items-center gap-3"
-                    >
-                      {/* Colour dot */}
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${colour}`} />
-                      {/* Source name */}
-                      <span className="w-28 truncate text-xs font-medium text-foreground capitalize shrink-0">
-                        {source}
-                      </span>
-                      {/* Bar */}
-                      <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+              {view === "source" ? (
+                  <div className="px-5 pb-4 pt-3 space-y-3">
+                    {splitMode === "round_robin" && (
+                      <p className="text-[11px] text-muted-foreground bg-violet-500/5 border border-violet-500/15 rounded-lg px-3 py-2">
+                        In <span className="font-semibold text-violet-400">round-robin</span> mode, leads from each source are
+                        distributed to members sequentially using a per-source cursor — ensuring fair rotation across all sources.
+                      </p>
+                    )}
+
+                    {/* Source proportion bar */}
+                    <div className="flex h-2 rounded-full overflow-hidden gap-px">
+                      {sourceSplit.map(({ source, count }, idx) => (
                         <motion.div
-                          className={`h-full rounded-full ${colour}`}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.04 }}
+                          key={source}
+                          className={`${SOURCE_COLOURS[idx % SOURCE_COLOURS.length]} h-full`}
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          style={{ width: `${(count / totalUnassigned) * 100}%`, transformOrigin: "left" }}
+                          transition={{ duration: 0.5, delay: idx * 0.05, ease: "easeOut" }}
+                          title={`${source}: ${count}`}
                         />
-                      </div>
-                      {/* Count + pct */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[11px] font-bold text-foreground tabular-nums">{count}</span>
-                        <span className="text-[10px] text-muted-foreground tabular-nums">
-                          ({Math.round((count / totalUnassigned) * 100)}%)
-                        </span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                      ))}
+                    </div>
+
+                    {/* Per-source rows */}
+                    <div className="space-y-2.5 mt-1">
+                      {sourceSplit.map(({ source, count }, idx) => {
+                        const pct = max > 0 ? (count / max) * 100 : 0;
+                        const colour = SOURCE_COLOURS[idx % SOURCE_COLOURS.length];
+                        return (
+                          <motion.div
+                            key={source}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.04 }}
+                            className="flex items-center gap-3"
+                          >
+                            <span className={`h-2 w-2 shrink-0 rounded-full ${colour}`} />
+                            <span className="w-28 truncate text-xs font-medium text-foreground capitalize shrink-0">
+                              {source}
+                            </span>
+                            <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                              <motion.div
+                                className={`h-full rounded-full ${colour}`}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{ duration: 0.5, ease: "easeOut", delay: idx * 0.04 }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[11px] font-bold text-foreground tabular-nums">{count}</span>
+                              <span className="text-[10px] text-muted-foreground tabular-nums">
+                                ({Math.round((count / totalUnassigned) * 100)}%)
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-5 pb-4 pt-3 space-y-2">
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Estimated sources each member will receive in this batch
+                      {splitMode === "round_robin" && (
+                        <span className="ml-1 text-violet-400">(cursor position approximated)</span>
+                      )}.
+                    </p>
+                    {previewDistribution
+                      .filter((m) => m.leadsToReceive > 0)
+                      .map((m, idx) => {
+                        const sourceCounts = memberSourceCounts.get(m.memberId);
+                        const entries = sourceCounts
+                          ? Array.from(sourceCounts.entries()).sort((a, b) => b[1] - a[1])
+                          : [];
+                        return (
+                          <motion.div
+                            key={m.memberId}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.04 }}
+                            className="flex items-center gap-3 rounded-xl border border-border/30 bg-muted/10 px-3 py-2.5"
+                          >
+                            {/* Avatar */}
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                              {getInitials(m.memberName)}
+                            </div>
+                            {/* Name */}
+                            <span className="w-24 truncate text-xs font-medium text-foreground shrink-0">
+                              {m.memberName}
+                            </span>
+                            {/* Source pills */}
+                            <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                              {entries.map(([source, count]) => {
+                                const colour = sourceColourMap.get(source) ?? "bg-gray-500";
+                                return (
+                                  <motion.span
+                                    key={source}
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${colour}`}
+                                  >
+                                    {source}
+                                    <span className="opacity-80">×{count}</span>
+                                  </motion.span>
+                                );
+                              })}
+                              {entries.length === 0 && (
+                                <span className="text-[10px] text-muted-foreground">—</span>
+                              )}
+                            </div>
+                            {/* Total */}
+                            <span className="shrink-0 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
+                              +{m.leadsToReceive}
+                            </span>
+                          </motion.div>
+                        );
+                      })}
+                  </div>
+                )}
             </div>
           </motion.div>
         )}
@@ -530,6 +666,7 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
         leads={unassignedLeads}
         totalUnassigned={totalUnassigned}
         splitMode={splitMode}
+        previewDistribution={previewDistribution}
       />
 
       {/* ── Unassigned leads list ── */}
