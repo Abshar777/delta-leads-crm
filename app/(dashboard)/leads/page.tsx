@@ -500,7 +500,7 @@ function LeadsPageContent() {
   const bulkAssignTeam = useBulkAssignLeadsToTeam();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { mutate: updateStatus } = useUpdateLeadStatus();
+  const { mutate: updateStatus, isPending: updateStatusPending } = useUpdateLeadStatus();
   const { mutate: updateLeadField } = useUpdateLead();
 
   // Clear selection when page/filters change
@@ -1509,7 +1509,7 @@ function LeadsPageContent() {
       <LostReasonModal
         open={lostModalOpen}
         leadName={lostModalLead?.name}
-        loading={bulkUpdateStatus.isPending}
+        loading={updateStatusPending}
         onConfirm={(reason, notes) => {
           if (!lostModalLead) return;
           updateStatus(

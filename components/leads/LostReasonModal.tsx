@@ -32,6 +32,8 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
   function handleConfirm() {
     if (!selected) return;
     onConfirm(selected, notes.trim());
+    setSelected("");
+    setNotes("");
   }
 
   function handleCancel() {
