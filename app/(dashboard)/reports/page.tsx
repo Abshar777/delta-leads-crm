@@ -166,7 +166,7 @@ function KpiCard({ title, value, sub, icon: Icon, gradient, delay = 0, loading, 
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">{title}</p>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider line-clamp-2 leading-tight">{title}</p>
               {loading
                 ? <Skeleton className="h-8 w-20 mt-1" />
                 : <p className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums">{value}</p>
@@ -3558,6 +3558,7 @@ function ReportsPageContent() {
               {TABS.map(({ id, label, shortLabel, icon: Icon }) => (
                 <button
                   key={id}
+                  title={label}
                   onClick={() => setActiveTab(id)}
                   className={cn(
                     "relative flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors rounded-lg whitespace-nowrap",
@@ -3573,9 +3574,8 @@ function ReportsPageContent() {
                       transition={{ type: "spring", stiffness: 500, damping: 40, mass: 0.8 }}
                     />
                   )}
-                  <Icon className="relative z-10 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                  <span className="relative z-10 hidden sm:inline">{label}</span>
-                  <span className="relative z-10 sm:hidden">{shortLabel}</span>
+                  <Icon className="relative z-10 h-3.5 w-3.5 shrink-0" />
+                  <span className="relative z-10">{shortLabel}</span>
                 </button>
               ))}
             </div>
