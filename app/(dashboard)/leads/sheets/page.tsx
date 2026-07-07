@@ -5,11 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, Pencil, Trash2, Table2, ToggleLeft, ToggleRight,
   Chrome, Facebook, Instagram, MessageCircle, Globe, BarChart2,
-  Sheet, CheckCircle2, XCircle,
+  Sheet, CheckCircle2, XCircle, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -40,12 +39,12 @@ const PLATFORM_META: Record<SheetSource["platform"], {
   color: string;
   bg: string;
 }> = {
-  google:    { label: "Google Ads",  icon: Chrome,         color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
-  facebook:  { label: "Facebook",    icon: Facebook,       color: "text-blue-500",   bg: "bg-blue-600/10 border-blue-600/20" },
-  instagram: { label: "Instagram",   icon: Instagram,      color: "text-pink-400",   bg: "bg-pink-500/10 border-pink-500/20" },
-  meta:      { label: "Meta",        icon: Globe,          color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20" },
-  whatsapp:  { label: "WhatsApp",    icon: MessageCircle,  color: "text-green-400",  bg: "bg-green-500/10 border-green-500/20" },
-  other:     { label: "Other",       icon: BarChart2,      color: "text-muted-foreground", bg: "bg-muted/40 border-border/40" },
+  google:    { label: "Google Ads",  icon: Chrome,        color: "text-blue-400",        bg: "bg-blue-500/10 border-blue-500/20" },
+  facebook:  { label: "Facebook",    icon: Facebook,      color: "text-blue-500",        bg: "bg-blue-600/10 border-blue-600/20" },
+  instagram: { label: "Instagram",   icon: Instagram,     color: "text-pink-400",        bg: "bg-pink-500/10 border-pink-500/20" },
+  meta:      { label: "Meta",        icon: Globe,         color: "text-violet-400",      bg: "bg-violet-500/10 border-violet-500/20" },
+  whatsapp:  { label: "WhatsApp",    icon: MessageCircle, color: "text-green-400",       bg: "bg-green-500/10 border-green-500/20" },
+  other:     { label: "Other",       icon: BarChart2,     color: "text-muted-foreground", bg: "bg-muted/40 border-border/40" },
 };
 
 function PlatformBadge({ platform }: { platform: SheetSource["platform"] }) {
@@ -76,12 +75,12 @@ function SourceCard({
       variants={listItem}
       whileHover={{ y: -1 }}
       className={[
-        "rounded-2xl border bg-card p-5 transition-colors duration-150",
+        "rounded-2xl border bg-card p-5 flex flex-col gap-3 transition-colors duration-150",
         source.isActive ? "border-border/50" : "border-border/20 opacity-60",
       ].join(" ")}
     >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3 mb-3">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-foreground truncate">{source.name}</p>
@@ -97,26 +96,47 @@ function SourceCard({
         <PlatformBadge platform={source.platform} />
       </div>
 
-      {/* Source key */}
-      <div className="rounded-lg bg-muted/40 border border-border/30 px-3 py-2 mb-3">
-        <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wide">Source Key</p>
-        <p className="font-mono text-xs text-foreground">{source.source}</p>
+      {/* Source keys chips */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Source Keys</p>
+        <div className="flex flex-wrap gap-1.5">
+          {source.sources.map((s) => (
+            <span
+              key={s}
+              className="inline-block rounded-full border border-primary/25 bg-primary/8 px-2.5 py-0.5 font-mono text-[11px] text-primary"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Stats row */}
-      <div className="flex items-center justify-between">
+      {/* Google Sheets link — only rendered when backend sends it (leaders/admin) */}
+      {source.link && (
+        <a
+          href={source.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/8 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/15 transition-colors w-fit"
+        >
+          <ExternalLink className="h-3 w-3" />
+          Open Google Sheet
+        </a>
+      )}
+
+      {/* Footer — stats + actions */}
+      <div className="flex items-center justify-between mt-auto pt-1 border-t border-border/20">
         <div className="flex items-center gap-1.5">
           <BarChart2 className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs text-muted-foreground">
-            <span className="font-bold text-foreground">{source.totalLeads.toLocaleString()}</span> lead{source.totalLeads !== 1 ? "s" : ""}
+            <span className="font-bold text-foreground">{source.totalLeads.toLocaleString()}</span>{" "}
+            lead{source.totalLeads !== 1 ? "s" : ""}
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <Button
-            variant="ghost"
-            size="icon"
+            variant="ghost" size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={onToggle}
             title={source.isActive ? "Deactivate" : "Activate"}
@@ -127,16 +147,14 @@ function SourceCard({
             }
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
+            variant="ghost" size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-foreground"
             onClick={onEdit}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
+            variant="ghost" size="icon"
             className="h-7 w-7 text-muted-foreground hover:text-destructive"
             onClick={onDelete}
           >
@@ -152,17 +170,17 @@ function SourceCard({
 export default function SheetsPage() {
   const { data: sources = [], isLoading } = useSheetSources();
   const { mutate: deleteSrc } = useDeleteSheetSource();
-  const { mutate: update } = useUpdateSheetSource();
+  const { mutate: update }    = useUpdateSheetSource();
 
-  const [search, setSearch]         = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing]       = useState<SheetSource | null>(null);
+  const [search, setSearch]             = useState("");
+  const [dialogOpen, setDialogOpen]     = useState(false);
+  const [editing, setEditing]           = useState<SheetSource | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SheetSource | null>(null);
 
   const filtered = sources.filter((s) =>
     !search ||
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.source.toLowerCase().includes(search.toLowerCase()),
+    s.sources.some((k) => k.toLowerCase().includes(search.toLowerCase())),
   );
 
   const totalLeads = sources.reduce((acc, s) => acc + s.totalLeads, 0);
@@ -173,13 +191,19 @@ export default function SheetsPage() {
     update({ id: s._id, payload: { isActive: !s.isActive } });
   }
 
+  // Platform stats — count distinct platforms
+  const platformStats = (["google", "facebook", "meta", "other"] as SheetSource["platform"][]).map((p) => {
+    const matched = sources.filter((s) =>
+      p === "other"
+        ? !["google", "facebook", "instagram", "meta", "whatsapp"].includes(s.platform)
+        : s.platform === p,
+    );
+    return { platform: p, sheets: matched.length, leads: matched.reduce((a, s) => a + s.totalLeads, 0) };
+  }).filter((s) => s.sheets > 0);
+
   return (
-    <motion.div
-      variants={pageVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-6"
-    >
+    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="space-y-6">
+
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -195,22 +219,19 @@ export default function SheetsPage() {
         </div>
         <Button onClick={openCreate} className="gap-2 shrink-0" size="sm">
           <Plus className="h-4 w-4" />
-          Add Source
+          Add Sheet
         </Button>
       </div>
 
-      {/* Stats strip */}
-      {sources.length > 0 && (
+      {/* Platform stats strip */}
+      {platformStats.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {(["google", "facebook", "meta", "other"] as SheetSource["platform"][]).map((p) => {
-            const meta = PLATFORM_META[p];
+          {platformStats.map(({ platform, sheets, leads }) => {
+            const meta = PLATFORM_META[platform];
             const Icon = meta.icon;
-            const count = sources.filter((s) => s.platform === p || (p === "other" && !["google","facebook","instagram","meta","whatsapp"].includes(s.platform))).reduce((a, s) => a + s.totalLeads, 0);
-            const sheets = sources.filter((s) => s.platform === p || (p === "other" && !["google","facebook","instagram","meta","whatsapp"].includes(s.platform))).length;
-            if (p === "other" && sheets === 0) return null;
             return (
               <motion.div
-                key={p}
+                key={platform}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="rounded-xl border border-border/40 bg-card px-4 py-3"
@@ -219,7 +240,7 @@ export default function SheetsPage() {
                   <Icon className={`h-3.5 w-3.5 ${meta.color}`} />
                   <span className="text-[11px] text-muted-foreground">{meta.label}</span>
                 </div>
-                <p className="text-lg font-bold text-foreground">{count.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{leads.toLocaleString()}</p>
                 <p className="text-[10px] text-muted-foreground">{sheets} sheet{sheets !== 1 ? "s" : ""}</p>
               </motion.div>
             );
@@ -234,7 +255,7 @@ export default function SheetsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search sheets or sources…"
+            placeholder="Search sheets or source keys…"
             className="pl-8 h-8 text-sm"
           />
         </div>
@@ -243,17 +264,14 @@ export default function SheetsPage() {
       {/* Loading */}
       {isLoading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-44 rounded-2xl bg-muted/30 animate-pulse" />
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-52 rounded-2xl bg-muted/30 animate-pulse" />)}
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && sources.length === 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center justify-center gap-4 py-24 text-center"
         >
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/30">
@@ -262,12 +280,11 @@ export default function SheetsPage() {
           <div>
             <p className="text-sm font-semibold text-foreground">No sheet sources yet</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-              Add a source for each Google Sheet integration (Abhin Google Ads, Meta Leads, etc.) to track where your leads come from.
+              Add a source for each Google Sheet integration — Abhin Google Ads, Meta Leads, Dilshad, etc.
             </p>
           </div>
           <Button onClick={openCreate} className="gap-2" size="sm">
-            <Plus className="h-4 w-4" />
-            Add First Source
+            <Plus className="h-4 w-4" /> Add First Sheet
           </Button>
         </motion.div>
       )}
@@ -275,9 +292,7 @@ export default function SheetsPage() {
       {/* Cards grid */}
       {!isLoading && filtered.length > 0 && (
         <motion.div
-          variants={listContainer}
-          initial="hidden"
-          animate="visible"
+          variants={listContainer} initial="hidden" animate="visible"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           <AnimatePresence>
@@ -302,11 +317,7 @@ export default function SheetsPage() {
       )}
 
       {/* Add/Edit dialog */}
-      <SheetSourceDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        existing={editing}
-      />
+      <SheetSourceDialog open={dialogOpen} onOpenChange={setDialogOpen} existing={editing} />
 
       {/* Delete confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
@@ -314,8 +325,7 @@ export default function SheetsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete &quot;{deleteTarget?.name}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the sheet configuration. Existing leads with source{" "}
-              <code className="bg-muted px-1 rounded">{deleteTarget?.source}</code> are not affected.
+              This removes the sheet configuration. Existing leads with these source keys are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

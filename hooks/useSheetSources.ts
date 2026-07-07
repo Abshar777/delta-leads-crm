@@ -9,7 +9,8 @@ const KEY = ["sheet-sources"] as const;
 export interface SheetSource {
   _id: string;
   name: string;
-  source: string;
+  sources: string[];
+  link?: string;           // only present for leaders / super admins
   platform: "google" | "facebook" | "instagram" | "meta" | "whatsapp" | "other";
   description?: string;
   isActive: boolean;

@@ -52,8 +52,12 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
   const { data: teamsData } = useTeams({ status: "active", limit: 100 });
   const teams = teamsData?.data ?? [];
   const { data: sheetSources = [] } = useSheetSources();
-  const SOURCES = sheetSources.filter((s) => s.isActive).length > 0
-    ? sheetSources.filter((s) => s.isActive).map((s) => ({ value: s.source, label: s.name }))
+  // Flatten all source keys across active integrations; fall back to hardcoded list
+  const activeSources = sheetSources.filter((s) => s.isActive);
+  const SOURCES = activeSources.length > 0
+    ? activeSources.flatMap((s) =>
+        s.sources.map((key) => ({ value: key, label: `${s.name} · ${key}` }))
+      )
     : FALLBACK_SOURCES;
 
   const isPending = creating || updating;
