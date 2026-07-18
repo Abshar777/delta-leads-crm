@@ -225,6 +225,7 @@ const SOURCE_COLOURS = [
 function estimateMemberSourceCounts(
   leads: UpcomingBatchData["unassignedLeads"],
   distribution: UpcomingBatchData["previewDistribution"],
+  sourceExclusions?: Record<string, string[]>,
 ): Map<string, Map<string, number>> {
   const result = new Map<string, Map<string, number>>();
   for (const m of distribution) result.set(m.memberId, new Map());
@@ -232,20 +233,30 @@ function estimateMemberSourceCounts(
   const total = leads.length;
   if (total === 0 || distribution.length === 0) return result;
 
+  const isExcluded = (memberId: string, source: string): boolean => {
+    const src = source.trim().toLowerCase();
+    if (!src || src === "unknown") return false;
+    return !!sourceExclusions?.[memberId]?.some((s) => s.trim().toLowerCase() === src);
+  };
+
   // Count per source
   const sourceCount = new Map<string, number>();
   for (const lead of leads) {
     const s = lead.source?.trim() || "Unknown";
     sourceCount.set(s, (sourceCount.get(s) ?? 0) + 1);
   }
-  const sources = Array.from(sourceCount.entries()).sort((a, b) => b[1] - a[1]);
+  const allSources = Array.from(sourceCount.entries()).sort((a, b) => b[1] - a[1]);
 
   for (const m of distribution) {
     if (m.leadsToReceive === 0) continue;
     const mm = result.get(m.memberId)!;
+    // Only sources this member is allowed to receive
+    const sources = allSources.filter(([source]) => !isExcluded(m.memberId, source));
+    if (sources.length === 0) continue;
+    const allowedTotal = sources.reduce((s, [, c]) => s + c, 0);
     // Largest-remainder method: floor first, then top up from highest remainders
     const quotas = sources.map(([source, count]) => {
-      const exact = m.leadsToReceive * (count / total);
+      const exact = m.leadsToReceive * (count / allowedTotal);
       return { source, floor: Math.floor(exact), remainder: exact - Math.floor(exact) };
     });
     let allocated = quotas.reduce((s, q) => s + q.floor, 0);
@@ -267,11 +278,13 @@ function SourceBreakdown({
   totalUnassigned,
   splitMode,
   previewDistribution,
+  sourceExclusions,
 }: {
   leads: UpcomingBatchData["unassignedLeads"];
   totalUnassigned: number;
   splitMode: "round_robin" | "equal_load";
   previewDistribution: UpcomingBatchData["previewDistribution"];
+  sourceExclusions?: Record<string, string[]>;
 }) {
   const [open, setOpen] = useState(true);
   const [view, setView] = useState<"source" | "member">("source");
@@ -297,8 +310,8 @@ function SourceBreakdown({
   }, [sourceSplit]);
 
   const memberSourceCounts = useMemo(
-    () => estimateMemberSourceCounts(leads, previewDistribution),
-    [leads, previewDistribution],
+    () => estimateMemberSourceCounts(leads, previewDistribution, sourceExclusions),
+    [leads, previewDistribution, sourceExclusions],
   );
 
   if (sourceSplit.length === 0) return null;
@@ -667,6 +680,7 @@ export function UpcomingBatch({ teamId, canEdit }: UpcomingBatchProps) {
         totalUnassigned={totalUnassigned}
         splitMode={splitMode}
         previewDistribution={previewDistribution}
+        sourceExclusions={data?.sourceExclusions}
       />
 
       {/* ── Unassigned leads list ── */}

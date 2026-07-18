@@ -668,6 +668,7 @@ export interface UpcomingBatchData {
   splitMode: "round_robin" | "equal_load";
   unassignedLeads: UpcomingBatchLead[];
   previewDistribution: UpcomingBatchMemberPreview[];
+  sourceExclusions?: Record<string, string[]>; // userId → sources never auto-assigned to them
 }
 
 export const useUpcomingBatch = (teamId: string, enabled = true) => {
