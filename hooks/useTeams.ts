@@ -586,6 +586,7 @@ export const useUpdateTeamSettings = (teamId: string) => {
       splitTime?: string | null;
       roundRobinStartDate?: string | null;
       slaMinutes?: number | null;
+      sourceExclusions?: Record<string, string[]>;
     }) => {
       const res = await api.patch<ApiResponse<TeamSettings>>(`/teams/${teamId}/settings`, settings);
       return res.data.data as TeamSettings;

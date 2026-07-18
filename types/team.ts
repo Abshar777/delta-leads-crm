@@ -9,6 +9,8 @@ export interface TeamSettings {
   roundRobinStartDate?: string | null;
   lastSplitAt?: string | null;
   slaMinutes?: number | null;
+  sourceExclusions?: Record<string, string[]>; // userId → sources never auto-assigned to them
+  availableSources?: string[];                 // distinct sources in this team's leads (GET only)
 }
 
 export interface AbsentEntry {
