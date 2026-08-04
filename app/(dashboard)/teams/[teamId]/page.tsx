@@ -140,6 +140,7 @@ import { TeamMemberKanban } from "@/components/teams/TeamMemberKanban";
 import { TeamSettingsTab } from "@/components/teams/TeamSettingsTab";
 import { UpcomingBatch } from "@/components/teams/UpcomingBatch";
 import { DailySplitTab } from "@/components/teams/DailySplitTab";
+import { QuickNoteDialog } from "@/components/leads/QuickNoteDialog";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import type { Team, TeamMemberStat, TeamUpdateItem, TeamMessageItem, TeamActivityItem } from "@/types/team";
@@ -1568,6 +1569,9 @@ function LeadsTab({
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Link>
                             </Button>
+
+                            {/* Quick note */}
+                            <QuickNoteDialog leadId={lead._id} leadName={lead.name} className="h-7 w-7" />
 
                             {/* Assign to member */}
                             {canActOnLead(lead) && (

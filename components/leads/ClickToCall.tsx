@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "@/lib/toast";
 import api from "@/lib/axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 const THREECX_URL = "https://deltainstitutions.3cx.ae:5002";
 
@@ -46,6 +47,7 @@ export function ClickToCall({
   className = "",
 }: ClickToCallProps) {
   const [isDialing, setIsDialing] = useState(false);
+  const queryClient = useQueryClient();
 
   if (!phoneNumber) return null;
 
@@ -56,6 +58,16 @@ export function ClickToCall({
       await api.post(`/calls/click?phone_number=${encodeURIComponent(phoneNumber)}${leadId ? `&lead_id=${leadId}` : ""}`);
     } catch {
       // non-fatal — logging failure shouldn't block the call
+    }
+    // Increment the lead's call count; the backend also stamps firstContactTime
+    // on the assigned agent's first call. Fire-and-forget — never blocks the call.
+    if (leadId) {
+      try {
+        await api.patch(`/leads/${leadId}/call-count`, { action: "increment" });
+        queryClient.invalidateQueries({ queryKey: ["leads"] });
+      } catch {
+        // non-fatal
+      }
     }
   }
 

@@ -452,6 +452,16 @@ function ActivityTimeline({ logs }: { logs: ActivityLog[] }) {
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
+
+  // Go back in history so the leads list keeps its search/filters/page state.
+  // Falls back to a fresh /leads navigation when there's no history (direct link).
+  function backToLeads() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/leads");
+    }
+  }
   const leadId = params.leadId as string;
   const { user: authUser, hasPermission } = useAuthStore();
 
@@ -512,7 +522,7 @@ export default function LeadDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <p className="text-muted-foreground">Lead not found</p>
-        <Button variant="outline" onClick={() => router.push("/leads")}>
+        <Button variant="outline" onClick={backToLeads}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Leads
         </Button>
       </div>
@@ -530,7 +540,7 @@ export default function LeadDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between gap-4 flex-wrap"
       >
-        <Button variant="ghost" size="sm" onClick={() => router.push("/leads")} className="gap-2 -ml-2">
+        <Button variant="ghost" size="sm" onClick={backToLeads} className="gap-2 -ml-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Leads
         </Button>

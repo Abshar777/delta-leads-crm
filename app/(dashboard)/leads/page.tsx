@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { TodayLeadsButton } from "@/components/leads/LeadsDateFilter";
 import { ClickToCall } from "@/components/leads/ClickToCall";
+import { QuickNoteDialog } from "@/components/leads/QuickNoteDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -86,6 +87,7 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: "firstContactTime",     label: "First Contact",      defaultVisible: false },
   { id: "initialLeadResponse",  label: "Response",           defaultVisible: true  },
   { id: "primaryConcern",       label: "Concern",            defaultVisible: true  },
+  { id: "exactConcern",         label: "Exact Concern",      defaultVisible: false },
   { id: "followupStrategyType", label: "Strategy",           defaultVisible: true  },
 ];
 
@@ -260,6 +262,7 @@ function LeadsPageContent() {
       firstContactTime:     { label: "First Contact", cls: "px-4 py-3 text-left hidden xl:table-cell" },
       initialLeadResponse:  { label: "Response",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
       primaryConcern:       { label: "Concern",       cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      exactConcern:         { label: "Exact Concern", cls: "px-4 py-3 text-left hidden lg:table-cell" },
       followupStrategyType: { label: "Strategy",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
     };
     const h = labelMap[colId];
@@ -425,6 +428,13 @@ function LeadsPageContent() {
               {PRIMARY_CONCERN_CONFIG.map((opt) => <DropdownMenuItem key={opt.value} onClick={() => updateLeadField({ id: lead._id, data: { primaryConcern: opt.value } as never })} className={`text-xs ${opt.color} ${lead.primaryConcern === opt.value ? "font-semibold" : ""}`}>{opt.label}</DropdownMenuItem>)}
             </DropdownMenuContent>
           </DropdownMenu>
+        </td>
+      );
+      case "exactConcern": return (
+        <td key="exactConcern" className="px-4 py-4 hidden lg:table-cell">
+          {lead.exactConcern
+            ? <span className="block max-w-[220px] truncate text-xs text-foreground/80" title={lead.exactConcern}>{lead.exactConcern}</span>
+            : <span className="text-xs text-muted-foreground/40">—</span>}
         </td>
       );
       case "followupStrategyType": return (
@@ -1333,6 +1343,7 @@ function LeadsPageContent() {
                                   leadName={lead.name}
                                 />
                               )}
+                              <QuickNoteDialog leadId={lead._id} leadName={lead.name} className="h-8 w-8" />
                               <Link href={`/leads/${lead._id}`}>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View">
                                   <ExternalLink className="h-4 w-4" />
@@ -1402,6 +1413,11 @@ function LeadsPageContent() {
                                       className="md:opacity-0 group-hover:opacity-100"
                                     />
                                   )}
+                                  <QuickNoteDialog
+                                    leadId={lead._id}
+                                    leadName={lead.name}
+                                    className="h-8 w-8 md:opacity-0 group-hover:opacity-100 transition-opacity"
+                                  />
                                   <Link href={`/leads/${lead._id}`}>
                                     <Button
                                       variant="ghost" size="icon"
