@@ -44,6 +44,8 @@ import type { Lead } from "@/types/lead";
 import type { LeadStatus } from "@/lib/statusConfig";
 import type { User } from "@/types";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { CreateStudentModal } from "@/components/students/CreateStudentModal";
 import { useStudentByLeadId } from "@/hooks/useStudents";
 import { LostReasonModal } from "@/components/leads/LostReasonModal";
@@ -94,6 +96,75 @@ const ALL_COLUMNS: ColumnDef[] = [
 const DEFAULT_VISIBLE = new Set(ALL_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// Inline editor for exactConcern — click the cell to edit in a popover
+function ExactConcernCell({
+  lead,
+  onSave,
+}: {
+  lead: Lead;
+  onSave: (value: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(lead.exactConcern ?? "");
+
+  function handleSave() {
+    const trimmed = value.trim();
+    if (trimmed !== (lead.exactConcern ?? "")) onSave(trimmed || null);
+    setOpen(false);
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(v) => {
+        if (v) setValue(lead.exactConcern ?? "");
+        setOpen(v);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button className="group/ec flex items-center gap-1 text-left max-w-[220px]">
+          {lead.exactConcern ? (
+            <span className="block truncate text-xs text-foreground/80" title={lead.exactConcern}>
+              {lead.exactConcern}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground/40 group-hover/ec:text-muted-foreground transition-colors">
+              + Add
+            </span>
+          )}
+          <Pencil className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover/ec:opacity-100 transition-opacity" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 p-3 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Exact Concern — {lead.name}
+        </p>
+        <Textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="What exactly is the lead's concern…"
+          rows={3}
+          maxLength={1000}
+          autoFocus
+          className="resize-none text-xs"
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") handleSave();
+            if (e.key === "Escape") setOpen(false);
+          }}
+        />
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" className="h-7 text-xs" onClick={handleSave}>
+            Save
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function StatusBadge({ status }: { status: LeadStatus }) {
   return (
@@ -432,9 +503,10 @@ function LeadsPageContent() {
       );
       case "exactConcern": return (
         <td key="exactConcern" className="px-4 py-4 hidden lg:table-cell">
-          {lead.exactConcern
-            ? <span className="block max-w-[220px] truncate text-xs text-foreground/80" title={lead.exactConcern}>{lead.exactConcern}</span>
-            : <span className="text-xs text-muted-foreground/40">—</span>}
+          <ExactConcernCell
+            lead={lead}
+            onSave={(v) => updateLeadField({ id: lead._id, data: { exactConcern: v } as never })}
+          />
         </td>
       );
       case "followupStrategyType": return (
