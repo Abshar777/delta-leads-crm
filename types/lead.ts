@@ -92,6 +92,7 @@ export interface Lead {
   campaign?: string;
   leadReceivedTime?: string | null;
   lastFollowupDate?: string | null;
+  lastContactedAt?: string | null;
   demoScheduled?: boolean | null;
   demoAttended?: boolean | null;
   exactConcern?: string | null;

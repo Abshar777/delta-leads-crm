@@ -86,6 +86,7 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: "lastFollowup",         label: "Last Followup",      defaultVisible: true  },
   { id: "demo",                 label: "Demo",               defaultVisible: false },
   { id: "firstContactTime",     label: "First Contact",      defaultVisible: false },
+  { id: "lastContactedAt",      label: "Last Contacted",     defaultVisible: false },
   { id: "initialLeadResponse",  label: "Response",           defaultVisible: true  },
   { id: "primaryConcern",       label: "Concern",            defaultVisible: true  },
   { id: "exactConcern",         label: "Exact Concern",      defaultVisible: false },
@@ -261,6 +262,7 @@ function LeadsPageContent() {
       lastFollowup:         { label: "Last Followup", cls: "px-4 py-3 text-left hidden lg:table-cell" },
       demo:                 { label: "Demo",          cls: "px-4 py-3 text-left hidden lg:table-cell" },
       firstContactTime:     { label: "First Contact", cls: "px-4 py-3 text-left hidden xl:table-cell" },
+      lastContactedAt:      { label: "Last Contacted", cls: "px-4 py-3 text-left hidden xl:table-cell" },
       initialLeadResponse:  { label: "Response",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
       primaryConcern:       { label: "Concern",       cls: "px-4 py-3 text-left hidden lg:table-cell" },
       exactConcern:         { label: "Exact Concern", cls: "px-4 py-3 text-left hidden lg:table-cell" },
@@ -396,6 +398,13 @@ function LeadsPageContent() {
         <td key="firstContactTime" className="px-4 py-4 hidden xl:table-cell">
           {lead.firstContactTime
             ? <span className="text-xs text-muted-foreground">{new Date(lead.firstContactTime).toLocaleString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+            : <span className="text-xs text-muted-foreground/40">—</span>}
+        </td>
+      );
+      case "lastContactedAt": return (
+        <td key="lastContactedAt" className="px-4 py-4 hidden xl:table-cell">
+          {lead.lastContactedAt
+            ? <span className="text-xs text-muted-foreground">{new Date(lead.lastContactedAt).toLocaleString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })}</span>
             : <span className="text-xs text-muted-foreground/40">—</span>}
         </td>
       );

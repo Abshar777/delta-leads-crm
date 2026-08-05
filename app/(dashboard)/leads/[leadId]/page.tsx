@@ -676,6 +676,9 @@ export default function LeadDetailPage() {
                   </div>
                 )}
 
+                {lead.lastContactedAt && (
+                  <InfoRow icon={Clock} label="Last Contacted" value={new Date(lead.lastContactedAt).toLocaleString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) + " GST"} />
+                )}
                 {lead.firstContactTime && (
                   <InfoRow icon={Clock} label="First Contact Time" value={new Date(lead.firstContactTime).toLocaleString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) + " GST"} />
                 )}
