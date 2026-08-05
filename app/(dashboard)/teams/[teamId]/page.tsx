@@ -141,6 +141,7 @@ import { TeamSettingsTab } from "@/components/teams/TeamSettingsTab";
 import { UpcomingBatch } from "@/components/teams/UpcomingBatch";
 import { DailySplitTab } from "@/components/teams/DailySplitTab";
 import { QuickNoteDialog } from "@/components/leads/QuickNoteDialog";
+import { ExactConcernEditor } from "@/components/leads/ExactConcernEditor";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
 import { AiChatPanel } from "@/components/leads/AiChatPanel";
 import type { Team, TeamMemberStat, TeamUpdateItem, TeamMessageItem, TeamActivityItem } from "@/types/team";
@@ -1486,6 +1487,7 @@ function LeadsTab({
                     <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-left">Status</th>
                     <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-left hidden md:table-cell">Assigned To</th>
                     <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-left hidden lg:table-cell">Source</th>
+                    <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-left hidden lg:table-cell">Exact Concern</th>
                     <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-left hidden lg:table-cell">Date</th>
                     <th className="px-3 py-2.5 sm:px-4 sm:py-3 text-center">Actions</th>
                   </tr>
@@ -1554,6 +1556,9 @@ function LeadsTab({
                           <span className="text-sm text-muted-foreground capitalize">
                             {lead.source ?? "—"}
                           </span>
+                        </td>
+                        <td className="px-3 py-2.5 sm:px-4 sm:py-3 hidden lg:table-cell">
+                          <ExactConcernEditor leadId={lead._id} leadName={lead.name} value={lead.exactConcern} />
                         </td>
                         <td className="px-3 py-2.5 sm:px-4 sm:py-3 hidden lg:table-cell">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
