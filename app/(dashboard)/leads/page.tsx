@@ -332,6 +332,11 @@ function LeadsPageContent() {
       case "source": return (
         <td key="source" className="px-4 py-4 hidden md:table-cell">
           <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
+          {lead.referredBy && (
+            <span className="block text-[10px] text-amber-500/90 truncate max-w-[160px]" title={`Referred by ${lead.referredBy}`}>
+              by {lead.referredBy}{lead.referralType ? ` (${lead.referralType})` : ""}
+            </span>
+          )}
         </td>
       );
       case "course": return (

@@ -22,9 +22,10 @@ import type { Team } from "@/types/team";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function downloadTemplate() {
-  const headers = ["Name", "Email", "Phone", "Source", "Notes"];
-  const sample = ["John Doe", "john@example.com", "+1234567890", "website", "Interested in product A"];
-  const csvContent = [headers.join(","), sample.join(",")].join("\n");
+  const headers = ["Name", "Email", "Phone", "Source", "Notes", "Referral Type", "Referred By"];
+  const sample  = ["John Doe", "john@example.com", "+1234567890", "website", "Interested in product A", "", ""];
+  const sample2 = ["Jane Doe", "jane@example.com", "+1234567891", "referral", "Referred lead", "student", "Ashik"];
+  const csvContent = [headers.join(","), sample.join(","), sample2.join(",")].join("\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -656,9 +657,12 @@ export default function UploadLeadsPage() {
           <CardContent>
             <p className="text-sm text-muted-foreground mb-3">
               Download the CSV template to see the required format. Supported columns:{" "}
-              {["Name", "Email", "Phone", "Source", "Notes"].map((c) => (
+              {["Name", "Email", "Phone", "Source", "Notes", "Referral Type", "Referred By"].map((c) => (
                 <span key={c} className="font-mono text-xs bg-muted px-1 py-0.5 rounded mr-1">{c}</span>
               ))}
+            </p>
+            <p className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs text-amber-500">
+              For <span className="font-semibold">Referral</span> leads, the <span className="font-mono">Referred By</span> column is <span className="font-semibold">mandatory</span> — mention who referred the lead (Delta employee, external referral, or student name). Rows without it will be rejected.
             </p>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
               <FileSpreadsheet className="h-4 w-4" />

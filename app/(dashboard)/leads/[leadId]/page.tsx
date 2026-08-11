@@ -581,6 +581,13 @@ export default function LeadDetailPage() {
                 <InfoRow icon={Mail} label="Email" value={lead.email} />
                 <InfoRow icon={Phone} label="Phone" value={lead.phone} leadId={lead._id} leadName={lead.name} hasWhatsapp={lead.hasWhatsapp} />
                 <InfoRow icon={Globe} label="Source" value={lead.source} />
+                {lead.referredBy && (
+                  <InfoRow
+                    icon={UsersRound}
+                    label="Referred By"
+                    value={`${lead.referredBy}${lead.referralType ? ` (${lead.referralType === "employee" ? "Delta employee" : lead.referralType})` : ""}`}
+                  />
+                )}
                 {lead.campaign && (
                   <InfoRow icon={TrendingUp} label="Campaign" value={lead.campaign} />
                 )}

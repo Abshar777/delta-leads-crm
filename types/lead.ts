@@ -93,6 +93,8 @@ export interface Lead {
   leadReceivedTime?: string | null;
   lastFollowupDate?: string | null;
   lastContactedAt?: string | null;
+  referralType?: "employee" | "external" | "student" | null;
+  referredBy?: string | null;
   demoScheduled?: boolean | null;
   demoAttended?: boolean | null;
   exactConcern?: string | null;

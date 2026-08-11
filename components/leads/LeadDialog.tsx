@@ -55,9 +55,13 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
   // Flatten all source keys across active integrations; fall back to hardcoded list
   const activeSources = sheetSources.filter((s) => s.isActive);
   const SOURCES = activeSources.length > 0
-    ? activeSources.flatMap((s) =>
-        s.sources.map((key) => ({ value: key, label: `${s.name} · ${key}` }))
-      )
+    ? [
+        ...activeSources.flatMap((s) =>
+          s.sources.map((key) => ({ value: key, label: `${s.name} · ${key}` }))
+        ),
+        // Referral must always be selectable regardless of sheet integrations
+        { value: "referral", label: "Referral" },
+      ]
     : FALLBACK_SOURCES;
 
   const isPending = creating || updating;
@@ -73,6 +77,10 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
     resolver: zodResolver(isEditing ? updateLeadSchema : createLeadSchema) as never,
     defaultValues: { name: "", email: "", phone: "", source: "", course: "", team: "", assignedTo: "" },
   });
+
+  // Watch source — referral requires "referred by" details
+  const sourceValue = useWatch({ control, name: "source" as never }) as string | undefined;
+  const isReferralSource = !!sourceValue?.toLowerCase().includes("referral");
 
   // Watch team field to fetch its members
   const selectedTeamId = useWatch({ control, name: "team" as never }) as string | undefined;
@@ -114,9 +122,11 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
           course: (typeof lead.course === "object" && lead.course !== null)
             ? (lead.course as { _id: string })._id
             : (lead.course as string | null | undefined) ?? "",
+          referralType: lead.referralType ?? null,
+          referredBy:   lead.referredBy ?? "",
         } as UpdateLeadFormValues as never);
       } else {
-        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, hasWhatsapp: true, sellingAmount: null, course: "", team: "", assignedTo: "" });
+        reset({ name: "", email: "", phone: "", source: "", campaignId: "", lastFollowupDate: "", demoScheduled: false, demoAttended: false, hasWhatsapp: true, sellingAmount: null, course: "", team: "", assignedTo: "", referralType: null, referredBy: "" });
       }
     }
   }, [open, lead, reset]);
@@ -141,6 +151,8 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
       course:           data.course     || undefined,
       team:             (data as CreateLeadFormValues).team       || undefined,
       assignedTo:       (data as CreateLeadFormValues).assignedTo || undefined,
+      referredBy:       isReferralSource ? (data.referredBy?.trim() || undefined) : null,
+      referralType:     isReferralSource ? (data.referralType ?? "external") : null,
     };
 
     if (isEditing && lead) {
@@ -217,6 +229,45 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
                 )}
               />
             </div>
+
+            {/* Referral details — mandatory when source is Referral */}
+            {isReferralSource && (
+              <div className="space-y-3 rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
+                <p className="text-[11px] font-semibold text-amber-500">
+                  Referral details (mandatory)
+                </p>
+                <div className="space-y-1.5">
+                  <Label>Referral Type <span className="text-destructive">*</span></Label>
+                  <Controller
+                    name={"referralType" as never}
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={(field.value as string | null) ?? ""} onValueChange={field.onChange}>
+                        <SelectTrigger><SelectValue placeholder="Who referred this lead?" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="employee">Delta employee</SelectItem>
+                          <SelectItem value="external">External referral</SelectItem>
+                          <SelectItem value="student">Student</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="lead-referred-by">Referred By (name) <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="lead-referred-by"
+                    placeholder="e.g. Ashik (student)"
+                    {...register("referredBy" as never)}
+                  />
+                  {(errors as Record<string, { message?: string }>).referredBy?.message && (
+                    <p className="text-xs text-destructive">
+                      {(errors as Record<string, { message?: string }>).referredBy?.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Campaign ID */}
             <div className="space-y-1.5">

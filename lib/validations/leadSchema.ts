@@ -21,16 +21,29 @@ const baseLeadFields = z.object({
   primaryConcern:        z.string().optional().nullable(),
   followupStrategyType:  z.string().optional().nullable(),
   sellingAmount:         z.number().min(0, "Selling amount cannot be negative").optional().nullable(),
+  referralType:          z.enum(["employee", "external", "student"]).optional().nullable(),
+  referredBy:            z.string().max(100, "Referred by too long").optional().nullable(),
 });
+
+// Referral leads MUST record who referred them
+function requireReferredBy(data: { source?: string; referredBy?: string | null }, ctx: z.RefinementCtx) {
+  if (data.source?.toLowerCase().includes("referral") && !data.referredBy?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["referredBy"],
+      message: "Referred By is mandatory for referral leads",
+    });
+  }
+}
 
 // Create — adds optional team + assignedTo
 export const createLeadSchema = baseLeadFields.extend({
   team:       z.string().optional().nullable(),
   assignedTo: z.string().optional().nullable(),
-});
+}).superRefine(requireReferredBy);
 
 // Edit — all fields optional, no team/assignedTo (managed via separate endpoints)
-export const updateLeadSchema = baseLeadFields.partial();
+export const updateLeadSchema = baseLeadFields.partial().superRefine(requireReferredBy);
 
 export const uploadLeadSchema = z.object({
   file: z
