@@ -33,7 +33,7 @@ const FALLBACK_SOURCES = [
   { value: "referral", label: "Referral" },
   { value: "social",   label: "Social Media" },
   { value: "direct",   label: "Direct" },
-  { value: "other",    label: "Other" },
+  { value: "other",    label: "Other", disabled: true }, // not allowed — pick a real source
 ];
 
 interface LeadDialogProps {
@@ -222,7 +222,13 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
                     <SelectTrigger><SelectValue placeholder="Select source" /></SelectTrigger>
                     <SelectContent>
                       {SOURCES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                        <SelectItem
+                          key={s.value}
+                          value={s.value}
+                          disabled={(s as { disabled?: boolean }).disabled}
+                        >
+                          {s.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
