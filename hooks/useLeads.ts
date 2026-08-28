@@ -165,8 +165,11 @@ export const useUpdateLead = () => {
 export const useUpdateLeadStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status, lostReason, lostNotes }: { id: string; status: Lead["status"]; lostReason?: string; lostNotes?: string }) => {
-      const response = await api.patch<ApiResponse<Lead>>(`/leads/${id}/status`, { status, lostReason, lostNotes });
+    mutationFn: async ({ id, status, lostReason, lostNotes, followUpNote, followUpAt, nextFollowUpAt }: {
+      id: string; status: Lead["status"]; lostReason?: string; lostNotes?: string;
+      followUpNote?: string; followUpAt?: string; nextFollowUpAt?: string;
+    }) => {
+      const response = await api.patch<ApiResponse<Lead>>(`/leads/${id}/status`, { status, lostReason, lostNotes, followUpNote, followUpAt, nextFollowUpAt });
       return response.data.data!;
     },
     onSuccess: (_, vars) => {
@@ -328,8 +331,11 @@ export const useTransferLeadToTeam = () => {
 export const useBulkUpdateLeadStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ leadIds, status, lostReason, lostNotes }: { leadIds: string[]; status: string; lostReason?: string; lostNotes?: string }) => {
-      const res = await api.patch<ApiResponse<{ updated: number }>>("/leads/bulk/status", { leadIds, status, lostReason, lostNotes });
+    mutationFn: async ({ leadIds, status, lostReason, lostNotes, followUpNote, followUpAt, nextFollowUpAt }: {
+      leadIds: string[]; status: string; lostReason?: string; lostNotes?: string;
+      followUpNote?: string; followUpAt?: string; nextFollowUpAt?: string;
+    }) => {
+      const res = await api.patch<ApiResponse<{ updated: number }>>("/leads/bulk/status", { leadIds, status, lostReason, lostNotes, followUpNote, followUpAt, nextFollowUpAt });
       return res.data.data!;
     },
     onSuccess: (data) => {

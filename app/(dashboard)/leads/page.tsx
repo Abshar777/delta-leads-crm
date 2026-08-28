@@ -48,6 +48,7 @@ import { ExactConcernEditor } from "@/components/leads/ExactConcernEditor";
 import { CreateStudentModal } from "@/components/students/CreateStudentModal";
 import { useStudentByLeadId } from "@/hooks/useStudents";
 import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -517,6 +518,9 @@ function LeadsPageContent() {
   const [lostModalLead,     setLostModalLead]      = useState<Lead | null>(null);
   // Lost reason modal for bulk flow
   const [bulkLostModalOpen, setBulkLostModalOpen]  = useState(false);
+  const [followupModalOpen,     setFollowupModalOpen]     = useState(false);
+  const [followupModalLead,     setFollowupModalLead]     = useState<Lead | null>(null);
+  const [bulkFollowupModalOpen, setBulkFollowupModalOpen] = useState(false);
 
   const bulkUpdateStatus = useBulkUpdateLeadStatus();
   const bulkDeleteLeads = useBulkDeleteLeads();
@@ -682,6 +686,9 @@ function LeadsPageContent() {
     if (s === "lost") {
       setLostModalLead(l);
       setLostModalOpen(true);
+    } else if (s === "followup") {
+      setFollowupModalLead(l);
+      setFollowupModalOpen(true);
     } else if (s === "closed") {
       setPendingStatus({ lead: l, status: s });
       setStudentModalLead(l);
@@ -1563,6 +1570,35 @@ function LeadsPageContent() {
         onCancel={() => setBulkLostModalOpen(false)}
       />
 
+      {/* Single-lead follow-up details modal */}
+      <FollowupDetailsModal
+        open={followupModalOpen}
+        leadName={followupModalLead?.name}
+        loading={updateStatusPending}
+        onConfirm={(d) => {
+          if (!followupModalLead) return;
+          updateStatus(
+            { id: followupModalLead._id, status: "followup", ...d },
+            { onSettled: () => { setFollowupModalOpen(false); setFollowupModalLead(null); } },
+          );
+        }}
+        onCancel={() => { setFollowupModalOpen(false); setFollowupModalLead(null); }}
+      />
+
+      {/* Bulk follow-up details modal */}
+      <FollowupDetailsModal
+        open={bulkFollowupModalOpen}
+        leadName={`${selectedIds.size} lead(s)`}
+        loading={bulkUpdateStatus.isPending}
+        onConfirm={(d) => {
+          bulkUpdateStatus.mutate(
+            { leadIds: Array.from(selectedIds), status: "followup", ...d },
+            { onSettled: () => { setBulkFollowupModalOpen(false); setSelectedIds(new Set()); } },
+          );
+        }}
+        onCancel={() => setBulkFollowupModalOpen(false)}
+      />
+
       {/* ── Bulk: Change Status ───────────────────────────────────────────────── */}
       <ResponsiveDialog open={bulkStatusOpen} onOpenChange={setBulkStatusOpen}>
         <ResponsiveDialogContent desktopClassName="max-w-sm">
@@ -1601,6 +1637,9 @@ function LeadsPageContent() {
                 if (bulkStatus === "lost") {
                   setBulkStatusOpen(false);
                   setBulkLostModalOpen(true);
+                } else if (bulkStatus === "followup") {
+                  setBulkStatusOpen(false);
+                  setBulkFollowupModalOpen(true);
                 } else {
                   bulkUpdateStatus.mutate(
                     { leadIds: Array.from(selectedIds), status: bulkStatus },

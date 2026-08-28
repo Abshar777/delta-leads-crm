@@ -16,7 +16,8 @@ export type ActivityAction =
   | "team_assigned"
   | "note_added"
   | "note_updated"
-  | "note_deleted";
+  | "note_deleted"
+  | "whatsapp_welcome";
 
 export interface LeadNote {
   _id: string;

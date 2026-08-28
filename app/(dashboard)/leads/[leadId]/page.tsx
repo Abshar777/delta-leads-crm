@@ -50,6 +50,7 @@ import { CallsPanel } from "@/components/leads/CallsPanel";
 import { FollowUpPanel } from "@/components/leads/FollowUpPanel";
 import { ClickToCall } from "@/components/leads/ClickToCall";
 import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 import { LEAD_STATUSES, STATUS_META } from "@/lib/statusConfig";
@@ -71,6 +72,7 @@ const ACTION_CONFIG: Record<ActivityAction, { icon: React.ElementType; color: st
   note_added: { icon: MessageSquarePlus, color: "text-green-400", bg: "bg-green-500/15" },
   note_updated: { icon: PencilLine, color: "text-cyan-400", bg: "bg-cyan-500/15" },
   note_deleted: { icon: Minus, color: "text-red-400", bg: "bg-red-500/15" },
+  whatsapp_welcome: { icon: MessageCircle, color: "text-green-400", bg: "bg-green-500/15" },
 };
 
 const noteSchema = z.object({ content: z.string().min(1, "Note cannot be empty").max(2000) });
@@ -477,6 +479,7 @@ export default function LeadDetailPage() {
   const { data: existingStudent } = useStudentByLeadId(lead?._id ?? "");
   const [showStudentModal,  setShowStudentModal]  = useState(false);
   const [lostModalOpen,     setLostModalOpen]     = useState(false);
+  const [followupModalOpen, setFollowupModalOpen] = useState(false);
   const [pendingLostStatus, setPendingLostStatus] = useState<LeadStatus | null>(null);
   const assignLead = useAssignLead();
   const assignToTeam = useAssignLeadToTeam();
@@ -892,6 +895,8 @@ export default function LeadDetailPage() {
                           if (newStatus === "lost") {
                             setPendingLostStatus(newStatus);
                             setLostModalOpen(true);
+                          } else if (newStatus === "followup") {
+                            setFollowupModalOpen(true);
                           } else if (newStatus === "closed" && !existingStudent) {
                             updateStatus.mutate({ id: lead._id, status: "closed" });
                             setShowStudentModal(true);
@@ -1394,6 +1399,20 @@ export default function LeadDetailPage() {
           );
         }}
         onCancel={() => { setLostModalOpen(false); setPendingLostStatus(null); }}
+      />
+
+      {/* Follow-up Details Modal — mandatory when status → followup */}
+      <FollowupDetailsModal
+        open={followupModalOpen}
+        leadName={lead.name}
+        loading={updateStatus.isPending}
+        onConfirm={(d) => {
+          updateStatus.mutate(
+            { id: lead._id, status: "followup", ...d },
+            { onSettled: () => setFollowupModalOpen(false) },
+          );
+        }}
+        onCancel={() => setFollowupModalOpen(false)}
       />
     </div>
   );

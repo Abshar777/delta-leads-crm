@@ -51,6 +51,7 @@ import type { Course } from "@/types/course";
 import type { Team } from "@/types/team";
 import LeadDialog from "@/components/leads/LeadDialog";
 import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
 import { fmtFull, getCurrencySymbol } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
 
@@ -949,6 +950,7 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
   const [reminderLead, setReminderLead]     = useState<Lead | null>(null);
   const [noteLead, setNoteLead]             = useState<Lead | null>(null);
   const [lostModalLead, setLostModalLead]   = useState<{ leadId: string; name: string } | null>(null);
+  const [followupModalLead, setFollowupModalLead] = useState<{ leadId: string; name: string } | null>(null);
 
   const { mutate: updateStatus, isPending: statusPending } = useUpdateLeadStatus();
   const { mutate: updateCNC }    = useUpdateCallNotConnected();
@@ -1009,6 +1011,12 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
       if (targetStatus === "lost") {
         // Don't apply optimistic update yet — wait for reason
         setLostModalLead({ leadId, name: lead.name });
+        return;
+      }
+
+      if (targetStatus === "followup") {
+        // Mandatory follow-up details before the move applies
+        setFollowupModalLead({ leadId, name: lead.name });
         return;
       }
 
@@ -1140,6 +1148,27 @@ export function KanbanBoard({ filters, canEdit }: KanbanBoardProps) {
           );
         }}
         onCancel={() => setLostModalLead(null)}
+      />
+
+      {/* Follow-up details modal — fires when a card is dragged to Follow Up */}
+      <FollowupDetailsModal
+        open={!!followupModalLead}
+        leadName={followupModalLead?.name}
+        loading={statusPending}
+        onConfirm={(d) => {
+          if (!followupModalLead) return;
+          const { leadId } = followupModalLead;
+          setLocalOverrides((prev) => ({ ...prev, [leadId]: "followup" }));
+          updateStatus(
+            { id: leadId, status: "followup", ...d },
+            {
+              onSuccess: () => setLocalOverrides((p) => { const n = { ...p }; delete n[leadId]; return n; }),
+              onError:   () => setLocalOverrides((p) => { const n = { ...p }; delete n[leadId]; return n; }),
+              onSettled: () => setFollowupModalLead(null),
+            },
+          );
+        }}
+        onCancel={() => setFollowupModalLead(null)}
       />
     </>
   );
