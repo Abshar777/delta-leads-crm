@@ -13,6 +13,7 @@ import { useReportTeamRankings } from "@/hooks/useReports";
 import { cn } from "@/lib/utils";
 import { useCurrencyStore } from "@/lib/store/currencyStore";
 import { fmtFull } from "@/lib/currency";
+import { DailyFollowupsPopup } from "@/components/leads/DailyFollowupsPopup";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -107,6 +108,10 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mt-1">
           Here&apos;s an overview of your CRM system.
         </p>
+        {/* Daily follow-up pop-up + reopen chip */}
+        <div className="mt-3">
+          <DailyFollowupsPopup />
+        </div>
       </motion.div>
 
       {/* Stats Grid */}

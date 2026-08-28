@@ -518,3 +518,25 @@ export const useAddFollowUp = (leadId: string) => {
     },
   });
 };
+
+// ─── Today's follow-ups (daily dashboard pop-up) ──────────────────────────────
+
+export interface TodayFollowupLead {
+  _id: string;
+  name: string;
+  phone?: string;
+  status: string;
+  source?: string;
+  nextFollowUpAt: string;
+}
+
+export const useMyTodayFollowups = () => {
+  return useQuery({
+    queryKey: [...LEADS_KEY, "followups", "mine", "today"],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<TodayFollowupLead[]>>("/leads/followups/mine/today");
+      return res.data.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
