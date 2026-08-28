@@ -584,6 +584,7 @@ export const useUpdateTeamSettings = (teamId: string) => {
       splitMode: "round_robin" | "equal_load";
       includedMembers: string[];
       splitTime?: string | null;
+      splitStrategy?: "scheduled" | "live";
       roundRobinStartDate?: string | null;
       slaMinutes?: number | null;
       sourceExclusions?: Record<string, string[]>;
@@ -666,6 +667,7 @@ export interface UpcomingBatchData {
   nextSplitAt: string | null;
   autoAssign: boolean;
   splitMode: "round_robin" | "equal_load";
+  splitStrategy?: "scheduled" | "live";
   unassignedLeads: UpcomingBatchLead[];
   previewDistribution: UpcomingBatchMemberPreview[];
   sourceExclusions?: Record<string, string[]>; // userId → sources never auto-assigned to them

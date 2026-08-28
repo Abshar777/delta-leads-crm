@@ -6,6 +6,7 @@ export interface TeamSettings {
   roundRobinIndex: number;
   includedMembers: string[];
   splitTime?: string | null;
+  splitStrategy?: "scheduled" | "live";
   roundRobinStartDate?: string | null;
   lastSplitAt?: string | null;
   slaMinutes?: number | null;
