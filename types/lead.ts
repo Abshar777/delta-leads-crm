@@ -17,7 +17,8 @@ export type ActivityAction =
   | "note_added"
   | "note_updated"
   | "note_deleted"
-  | "whatsapp_welcome";
+  | "whatsapp_welcome"
+  | "followup_missed";
 
 export interface LeadNote {
   _id: string;
@@ -94,6 +95,8 @@ export interface Lead {
   leadReceivedTime?: string | null;
   lastFollowupDate?: string | null;
   lastContactedAt?: string | null;
+  missedFollowUpWarnedAt?: string | null;
+  nextFollowUpAt?: string | null;
   referralType?: "employee" | "external" | "student" | null;
   referredBy?: string | null;
   demoScheduled?: boolean | null;

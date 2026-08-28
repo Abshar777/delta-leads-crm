@@ -89,6 +89,12 @@ export function DailyFollowupsPopup() {
           <p className={`text-[10px] ${late ? "text-red-400" : "text-muted-foreground"}`}>
             {late ? `overdue · ${fmtDate(lead.nextFollowUpAt)}` : fmtDate(lead.nextFollowUpAt)}
           </p>
+          {lead.missedFollowUpWarnedAt &&
+            new Date(lead.missedFollowUpWarnedAt) >= new Date(lead.nextFollowUpAt) && (
+            <span className="mt-0.5 inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-px text-[9px] font-bold text-red-500">
+              ⚠ missed
+            </span>
+          )}
         </div>
         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </Link>

@@ -528,6 +528,7 @@ export interface TodayFollowupLead {
   status: string;
   source?: string;
   nextFollowUpAt: string;
+  missedFollowUpWarnedAt?: string | null;
 }
 
 export const useMyTodayFollowups = () => {

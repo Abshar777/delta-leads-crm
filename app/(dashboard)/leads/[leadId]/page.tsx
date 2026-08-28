@@ -73,6 +73,7 @@ const ACTION_CONFIG: Record<ActivityAction, { icon: React.ElementType; color: st
   note_updated: { icon: PencilLine, color: "text-cyan-400", bg: "bg-cyan-500/15" },
   note_deleted: { icon: Minus, color: "text-red-400", bg: "bg-red-500/15" },
   whatsapp_welcome: { icon: MessageCircle, color: "text-green-400", bg: "bg-green-500/15" },
+  followup_missed: { icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/15" },
 };
 
 const noteSchema = z.object({ content: z.string().min(1, "Note cannot be empty").max(2000) });

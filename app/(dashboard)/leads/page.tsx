@@ -379,13 +379,26 @@ function LeadsPageContent() {
           <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
         </td>
       );
-      case "lastFollowup": return (
-        <td key="lastFollowup" className="px-4 py-4 hidden lg:table-cell">
-          {lead.lastFollowupDate
-            ? <span className="text-xs text-muted-foreground">{new Date(lead.lastFollowupDate).toLocaleDateString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" })}</span>
-            : <span className="text-xs text-muted-foreground/40">—</span>}
-        </td>
-      );
+      case "lastFollowup": {
+        const missed =
+          !!lead.missedFollowUpWarnedAt &&
+          !!lead.nextFollowUpAt &&
+          new Date(lead.missedFollowUpWarnedAt) >= new Date(lead.nextFollowUpAt);
+        return (
+          <td key="lastFollowup" className="px-4 py-4 hidden lg:table-cell">
+            <div className="flex items-center gap-1.5">
+              {missed && (
+                <span title="Missed follow-up — warning sent">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" />
+                </span>
+              )}
+              {lead.lastFollowupDate
+                ? <span className={`text-xs ${missed ? "text-red-400" : "text-muted-foreground"}`}>{new Date(lead.lastFollowupDate).toLocaleDateString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" })}</span>
+                : <span className={`text-xs ${missed ? "text-red-400" : "text-muted-foreground/40"}`}>—</span>}
+            </div>
+          </td>
+        );
+      }
       case "demo": return (
         <td key="demo" className="px-4 py-4 hidden lg:table-cell">
           <div className="flex flex-col gap-1">
