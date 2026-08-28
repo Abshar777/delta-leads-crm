@@ -41,6 +41,7 @@ import {
   useCampaignBreakdown,
   usePipelineBreakdown,
   useResponseTimeReport,
+  useLeadTimingReport,
   useFollowUpReport,
   useLeadQualityReport,
   useSalesFunnel,
@@ -2304,10 +2305,29 @@ function ResponseTimeTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
 
   const summary = data?.summary;
 
+  // Per-lead timing table (assigned / responded / follow-up)
+  const [timingPage, setTimingPage] = useState(1);
+  const { data: timing, isLoading: timingLoading } = useLeadTimingReport({
+    teamId: teamId || undefined,
+    dateFrom,
+    dateTo,
+    page: timingPage,
+    limit: 25,
+  });
+  useEffect(() => { setTimingPage(1); }, [teamId, dateFrom, dateTo]);
+
   function fmtMins(m: number | null) {
     if (m === null || m === undefined) return "—";
     if (m < 60) return `${Math.round(m)}m`;
     return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
+  }
+
+  function fmtDT(iso: string | null) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("en-AE", {
+      timeZone: "Asia/Dubai", day: "2-digit", month: "short",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    });
   }
 
   return (
@@ -2456,6 +2476,77 @@ function ResponseTimeTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
           </Card>
         </motion.div>
       )}
+
+      {/* Per-lead timing table — assigned / responded / follow-up times */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Timer className="h-4 w-4 text-primary" /> Lead Timing — Assigned / Responded / Follow-up
+              {timing && <span className="ml-auto text-[11px] font-normal text-muted-foreground">{timing.total} leads</span>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {timingLoading ? (
+              <div className="space-y-2">{[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : !timing?.leads?.length ? <Empty text="No assigned leads for this period" /> : (
+              <>
+                <div className="overflow-x-auto -mx-2 px-2">
+                  <table className="w-full text-xs min-w-[760px]">
+                    <thead>
+                      <tr className="border-b border-border/50">
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Lead</th>
+                        <th className="pb-2 text-left font-medium text-muted-foreground">Agent</th>
+                        <th className="pb-2 text-left font-medium text-blue-400">Assigned Time</th>
+                        <th className="pb-2 text-left font-medium text-green-500">Responded Time</th>
+                        <th className="pb-2 text-left font-medium text-violet-400">Follow-up Time</th>
+                        <th className="pb-2 text-right font-medium text-orange-400">Resp. Delay</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {timing.leads.map((l, i) => (
+                        <motion.tr key={l._id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.02 * i }}
+                          className="hover:bg-muted/30 transition-colors">
+                          <td className="py-2.5 pr-3">
+                            <p className="font-semibold text-foreground truncate max-w-[150px]">{l.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{l.source ?? ""}</p>
+                          </td>
+                          <td className="py-2.5 pr-3 text-muted-foreground truncate max-w-[110px]">{l.agent ?? "—"}</td>
+                          <td className="py-2.5 pr-3 tabular-nums text-blue-400">{fmtDT(l.assignedAt)}</td>
+                          <td className="py-2.5 pr-3 tabular-nums">
+                            {l.respondedAt
+                              ? <span className="text-green-500">{fmtDT(l.respondedAt)}</span>
+                              : <span className="text-red-400">Not responded</span>}
+                          </td>
+                          <td className="py-2.5 pr-3 tabular-nums">
+                            {l.followUpAt
+                              ? <span className="text-violet-400">{fmtDT(l.followUpAt)}</span>
+                              : <span className="text-muted-foreground/50">—</span>}
+                          </td>
+                          <td className="py-2.5 text-right tabular-nums">
+                            {l.responseMinutes !== null
+                              ? <span className={cn("font-semibold", l.responseMinutes <= slaMinutes ? "text-green-500" : "text-orange-400")}>{fmtMins(l.responseMinutes)}</span>
+                              : <span className="text-muted-foreground/50">—</span>}
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {timing.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-3">
+                    <p className="text-[11px] text-muted-foreground">Page {timing.page} of {timing.totalPages}</p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={timingPage <= 1} onClick={() => setTimingPage((p) => p - 1)}>Previous</Button>
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={timingPage >= timing.totalPages} onClick={() => setTimingPage((p) => p + 1)}>Next</Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

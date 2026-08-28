@@ -30,7 +30,8 @@ function fmtDate(iso: string): string {
   });
 }
 
-function isOverdue(iso: string): boolean {
+function isOverdue(iso: string | null): boolean {
+  if (!iso) return false;
   const d = new Date(iso);
   const gstDay = d.toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
   return gstDay < todayGST();
@@ -62,8 +63,9 @@ export function DailyFollowupsPopup() {
 
   if (followups.length === 0) return null;
 
-  const overdue = followups.filter((f) => isOverdue(f.nextFollowUpAt));
-  const today   = followups.filter((f) => !isOverdue(f.nextFollowUpAt));
+  const overdue     = followups.filter((f) => f.nextFollowUpAt && isOverdue(f.nextFollowUpAt));
+  const today       = followups.filter((f) => f.nextFollowUpAt && !isOverdue(f.nextFollowUpAt));
+  const unscheduled = followups.filter((f) => !f.nextFollowUpAt);
 
   function Row({ lead }: { lead: TodayFollowupLead }) {
     const late = isOverdue(lead.nextFollowUpAt);
@@ -73,8 +75,8 @@ export function DailyFollowupsPopup() {
         onClick={() => setOpen(false)}
         className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5 hover:border-primary/40 hover:bg-primary/5 transition-all group"
       >
-        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${late ? "bg-red-500/10" : "bg-blue-500/10"}`}>
-          <CalendarClock className={`h-4 w-4 ${late ? "text-red-500" : "text-blue-500"}`} />
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${late ? "bg-red-500/10" : lead.nextFollowUpAt ? "bg-blue-500/10" : "bg-amber-500/10"}`}>
+          <CalendarClock className={`h-4 w-4 ${late ? "text-red-500" : lead.nextFollowUpAt ? "text-blue-500" : "text-amber-500"}`} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{lead.name}</p>
@@ -83,13 +85,24 @@ export function DailyFollowupsPopup() {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className={`text-xs font-semibold tabular-nums ${late ? "text-red-500" : "text-foreground"}`}>
-            {fmtTime(lead.nextFollowUpAt)}
-          </p>
-          <p className={`text-[10px] ${late ? "text-red-400" : "text-muted-foreground"}`}>
-            {late ? `overdue · ${fmtDate(lead.nextFollowUpAt)}` : fmtDate(lead.nextFollowUpAt)}
-          </p>
-          {lead.missedFollowUpWarnedAt &&
+          {lead.nextFollowUpAt ? (
+            <>
+              <p className={`text-xs font-semibold tabular-nums ${late ? "text-red-500" : "text-foreground"}`}>
+                {fmtTime(lead.nextFollowUpAt)}
+              </p>
+              <p className={`text-[10px] ${late ? "text-red-400" : "text-muted-foreground"}`}>
+                {late ? `overdue · ${fmtDate(lead.nextFollowUpAt)}` : fmtDate(lead.nextFollowUpAt)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-amber-500">No time set</p>
+              {lead.lastFollowupDate && (
+                <p className="text-[10px] text-muted-foreground">last: {fmtDate(lead.lastFollowupDate)}</p>
+              )}
+            </>
+          )}
+          {lead.missedFollowUpWarnedAt && lead.nextFollowUpAt &&
             new Date(lead.missedFollowUpWarnedAt) >= new Date(lead.nextFollowUpAt) && (
             <span className="mt-0.5 inline-flex items-center rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-px text-[9px] font-bold text-red-500">
               ⚠ missed
@@ -112,7 +125,7 @@ export function DailyFollowupsPopup() {
         className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-500 hover:bg-blue-500/15 transition-colors"
       >
         <BellRing className="h-3.5 w-3.5" />
-        {followups.length} follow-up{followups.length > 1 ? "s" : ""} due today
+        {followups.length} follow-up{followups.length > 1 ? "s" : ""} pending
         {overdue.length > 0 && (
           <span className="rounded-full bg-red-500/15 border border-red-500/30 px-1.5 py-px text-[10px] font-bold text-red-500">
             {overdue.length} overdue
@@ -152,7 +165,7 @@ export function DailyFollowupsPopup() {
                   <div className="flex-1">
                     <h2 className="text-sm font-semibold text-foreground">Today&apos;s Follow-ups</h2>
                     <p className="text-xs text-muted-foreground">
-                      {today.length} due today{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}
+                      {today.length} due today{overdue.length > 0 ? ` · ${overdue.length} overdue` : ""}{unscheduled.length > 0 ? ` · ${unscheduled.length} without time` : ""}
                     </p>
                   </div>
                 </div>
@@ -173,6 +186,14 @@ export function DailyFollowupsPopup() {
                         Due today
                       </p>
                       {today.map((l) => <Row key={l._id} lead={l} />)}
+                    </>
+                  )}
+                  {unscheduled.length > 0 && (
+                    <>
+                      <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-500">
+                        Follow-up leads — no time set
+                      </p>
+                      {unscheduled.map((l) => <Row key={l._id} lead={l} />)}
                     </>
                   )}
                 </div>

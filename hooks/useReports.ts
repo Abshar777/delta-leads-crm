@@ -278,6 +278,56 @@ export function useResponseTimeReport(params: {
   });
 }
 
+// ── Lead Timing Report — per-lead assigned / responded / follow-up times ──────
+
+export interface LeadTimingRow {
+  _id: string;
+  name: string;
+  phone?: string;
+  source: string | null;
+  status: string;
+  agent: string | null;
+  team: string | null;
+  assignedAt: string | null;
+  respondedAt: string | null;
+  followUpAt: string | null;
+  nextFollowUpAt: string | null;
+  responseMinutes: number | null;
+  followUpMinutes: number | null;
+}
+
+export interface LeadTimingReport {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  leads: LeadTimingRow[];
+}
+
+export function useLeadTimingReport(params: {
+  teamId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const { teamId, dateFrom, dateTo, page = 1, limit = 25 } = params;
+  return useQuery<LeadTimingReport>({
+    queryKey: ["reports", "lead-timing", teamId, dateFrom, dateTo, page, limit],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (teamId)   p.set("teamId", teamId);
+      if (dateFrom) p.set("dateFrom", dateFrom);
+      if (dateTo)   p.set("dateTo", dateTo);
+      p.set("page", String(page));
+      p.set("limit", String(limit));
+      const { data } = await api.get<ApiResponse<LeadTimingReport>>(`/reports/lead-timing?${p}`);
+      return data.data as LeadTimingReport;
+    },
+    staleTime: 60_000,
+  });
+}
+
 // ── Follow-Up Report ───────────────────────────────────────────────────────────
 
 export interface FollowUpAgentRank {

@@ -527,8 +527,9 @@ export interface TodayFollowupLead {
   phone?: string;
   status: string;
   source?: string;
-  nextFollowUpAt: string;
+  nextFollowUpAt: string | null;
   missedFollowUpWarnedAt?: string | null;
+  lastFollowupDate?: string | null;
 }
 
 export const useMyTodayFollowups = () => {
