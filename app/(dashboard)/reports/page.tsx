@@ -2305,29 +2305,10 @@ function ResponseTimeTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
 
   const summary = data?.summary;
 
-  // Per-lead timing table (assigned / responded / follow-up)
-  const [timingPage, setTimingPage] = useState(1);
-  const { data: timing, isLoading: timingLoading } = useLeadTimingReport({
-    teamId: teamId || undefined,
-    dateFrom,
-    dateTo,
-    page: timingPage,
-    limit: 25,
-  });
-  useEffect(() => { setTimingPage(1); }, [teamId, dateFrom, dateTo]);
-
   function fmtMins(m: number | null) {
     if (m === null || m === undefined) return "—";
     if (m < 60) return `${Math.round(m)}m`;
     return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
-  }
-
-  function fmtDT(iso: string | null) {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleString("en-AE", {
-      timeZone: "Asia/Dubai", day: "2-digit", month: "short",
-      hour: "2-digit", minute: "2-digit", hour12: true,
-    });
   }
 
   return (
@@ -2477,8 +2458,63 @@ function ResponseTimeTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: strin
         </motion.div>
       )}
 
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAB: Lead Timing — per-lead assigned / responded / follow-up times
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LeadTimingTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const [teamId,     setTeamId]     = useState("");
+  const [timingPage, setTimingPage] = useState(1);
+  const { data: teamsData } = useTeams({ status: "active", limit: 100 });
+  const teams = teamsData?.data ?? [];
+
+  const { data: timing, isLoading: timingLoading } = useLeadTimingReport({
+    teamId: teamId || undefined,
+    dateFrom,
+    dateTo,
+    page: timingPage,
+    limit: 25,
+  });
+  useEffect(() => { setTimingPage(1); }, [teamId, dateFrom, dateTo]);
+
+  const slaMinutes = 60; // response delay shown green when within 1 hour
+
+  function fmtMins(m: number | null) {
+    if (m === null || m === undefined) return "—";
+    if (m < 60) return `${Math.round(m)}m`;
+    return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
+  }
+
+  function fmtDT(iso: string | null) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("en-AE", {
+      timeZone: "Asia/Dubai", day: "2-digit", month: "short",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Team:</span>
+          <Select value={teamId || "all"} onValueChange={(v) => setTeamId(v === "all" ? "" : v)}>
+            <SelectTrigger className="h-8 w-40 text-xs border-border/50"><SelectValue placeholder="All Teams" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {teams.map((t) => <SelectItem key={t._id} value={t._id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Per-lead timing table — assigned / responded / follow-up times */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -3528,7 +3564,7 @@ function AuditTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
 
 // ── Tab routing ───────────────────────────────────────────────────────────────
 
-type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup" | "lead-quality" | "funnel" | "alerts" | "audit";
+type Tab = "overview" | "split" | "revenue" | "sources" | "pipeline" | "response-time" | "followup" | "lead-timing" | "lead-quality" | "funnel" | "alerts" | "audit";
 
 const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementType }[] = [
   { id: "overview",       label: "Overview",           shortLabel: "Overview",  icon: BarChart2    },
@@ -3538,6 +3574,7 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
   { id: "pipeline",       label: "Pipeline",            shortLabel: "Pipeline",  icon: Filter       },
   { id: "response-time",  label: "Response Time SLA",   shortLabel: "SLA",       icon: Timer        },
   { id: "followup",       label: "Follow-Up Tracking",  shortLabel: "Follow-Up", icon: CalendarCheck },
+  { id: "lead-timing",    label: "Lead Timing",         shortLabel: "Timing",    icon: Clock        },
   { id: "lead-quality",   label: "Lead Quality",        shortLabel: "Quality",   icon: Sparkles     },
   { id: "funnel",         label: "Sales Funnel",        shortLabel: "Funnel",    icon: GitMerge     },
   { id: "alerts",         label: "Mgmt Alerts",         shortLabel: "Alerts",    icon: Bell         },
@@ -3712,6 +3749,10 @@ function ReportsPageContent() {
           ) : activeTab === "followup" ? (
             <motion.div key="followup" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
               <FollowUpTab dateFrom={dateFrom} dateTo={dateTo} />
+            </motion.div>
+          ) : activeTab === "lead-timing" ? (
+            <motion.div key="lead-timing" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
+              <LeadTimingTab dateFrom={dateFrom} dateTo={dateTo} />
             </motion.div>
           ) : activeTab === "lead-quality" ? (
             <motion.div key="lead-quality" initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.2 }}>
