@@ -28,12 +28,15 @@ import { useTeams, useTeam } from "@/hooks/useTeams";
 import { useSheetSources } from "@/hooks/useSheetSources";
 import type { Lead } from "@/types/lead";
 
+// Sources never selectable when creating or editing a lead — pick a real source
+const DISABLED_SOURCES = new Set(["other", "social", "direct"]);
+
 const FALLBACK_SOURCES = [
   { value: "website",  label: "Website" },
   { value: "referral", label: "Referral" },
-  { value: "social",   label: "Social Media" },
-  { value: "direct",   label: "Direct" },
-  { value: "other",    label: "Other", disabled: true }, // not allowed — pick a real source
+  { value: "social",   label: "Social Media", disabled: true },
+  { value: "direct",   label: "Direct", disabled: true },
+  { value: "other",    label: "Other", disabled: true },
 ];
 
 interface LeadDialogProps {
@@ -57,7 +60,11 @@ export function LeadDialog({ open, onOpenChange, lead, mode }: LeadDialogProps) 
   const SOURCES = activeSources.length > 0
     ? [
         ...activeSources.flatMap((s) =>
-          s.sources.map((key) => ({ value: key, label: `${s.name} · ${key}` }))
+          s.sources.map((key) => ({
+            value: key,
+            label: `${s.name} · ${key}`,
+            disabled: DISABLED_SOURCES.has(key.trim().toLowerCase()),
+          }))
         ),
         // Referral must always be selectable regardless of sheet integrations
         { value: "referral", label: "Referral" },
