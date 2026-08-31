@@ -29,8 +29,10 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
   const [selected, setSelected] = useState<string>("");
   const [notes,    setNotes]    = useState<string>("");
 
+  const otherNeedsReason = selected === "other" && notes.trim().length === 0;
+
   function handleConfirm() {
-    if (!selected) return;
+    if (!selected || otherNeedsReason) return;
     onConfirm(selected, notes.trim());
     setSelected("");
     setNotes("");
@@ -129,15 +131,24 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-foreground">Additional notes <span className="text-muted-foreground">(optional)</span></p>
+                  {selected === "other" ? (
+                    <p className="text-xs font-medium text-foreground">Reason <span className="text-red-500">(required)</span></p>
+                  ) : (
+                    <p className="text-xs font-medium text-foreground">Additional notes <span className="text-muted-foreground">(optional)</span></p>
+                  )}
                   <Textarea
-                    placeholder="Any additional context about why this lead was lost…"
+                    placeholder={selected === "other" ? "Type the reason this lead was lost…" : "Any additional context about why this lead was lost…"}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     maxLength={500}
                     rows={3}
-                    className="text-xs resize-none"
+                    className={cn("text-xs resize-none", otherNeedsReason && "border-amber-500/50 focus-visible:ring-amber-500/30")}
                   />
+                  {otherNeedsReason && (
+                    <p className="flex items-center gap-1 text-xs text-amber-500">
+                      <AlertTriangle className="h-3 w-3" /> Please type the reason when selecting Other.
+                    </p>
+                  )}
                   {notes.length > 0 && (
                     <p className="text-xs text-muted-foreground text-right">{notes.length}/500</p>
                   )}
@@ -152,7 +163,7 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
                 <Button
                   size="sm"
                   variant="destructive"
-                  disabled={!selected || loading}
+                  disabled={!selected || otherNeedsReason || loading}
                   onClick={handleConfirm}
                   className="min-w-[100px]"
                 >
