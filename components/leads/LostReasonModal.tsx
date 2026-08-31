@@ -29,10 +29,11 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
   const [selected, setSelected] = useState<string>("");
   const [notes,    setNotes]    = useState<string>("");
 
-  const otherNeedsReason = selected === "other" && notes.trim().length === 0;
+  // Notes are mandatory for every reason; for "Other" they ARE the reason
+  const notesMissing = selected !== "" && notes.trim().length === 0;
 
   function handleConfirm() {
-    if (!selected || otherNeedsReason) return;
+    if (!selected || notesMissing) return;
     onConfirm(selected, notes.trim());
     setSelected("");
     setNotes("");
@@ -134,7 +135,7 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
                   {selected === "other" ? (
                     <p className="text-xs font-medium text-foreground">Reason <span className="text-red-500">(required)</span></p>
                   ) : (
-                    <p className="text-xs font-medium text-foreground">Additional notes <span className="text-muted-foreground">(optional)</span></p>
+                    <p className="text-xs font-medium text-foreground">Additional notes <span className="text-red-500">(required)</span></p>
                   )}
                   <Textarea
                     placeholder={selected === "other" ? "Type the reason this lead was lost…" : "Any additional context about why this lead was lost…"}
@@ -142,11 +143,11 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
                     onChange={(e) => setNotes(e.target.value)}
                     maxLength={500}
                     rows={3}
-                    className={cn("text-xs resize-none", otherNeedsReason && "border-amber-500/50 focus-visible:ring-amber-500/30")}
+                    className={cn("text-xs resize-none", notesMissing && "border-amber-500/50 focus-visible:ring-amber-500/30")}
                   />
-                  {otherNeedsReason && (
+                  {notesMissing && (
                     <p className="flex items-center gap-1 text-xs text-amber-500">
-                      <AlertTriangle className="h-3 w-3" /> Please type the reason when selecting Other.
+                      <AlertTriangle className="h-3 w-3" /> {selected === "other" ? "Please type the reason when selecting Other." : "Please add notes about why this lead was lost."}
                     </p>
                   )}
                   {notes.length > 0 && (
@@ -163,7 +164,7 @@ export function LostReasonModal({ open, leadName, onConfirm, onCancel, loading }
                 <Button
                   size="sm"
                   variant="destructive"
-                  disabled={!selected || otherNeedsReason || loading}
+                  disabled={!selected || notesMissing || loading}
                   onClick={handleConfirm}
                   className="min-w-[100px]"
                 >
