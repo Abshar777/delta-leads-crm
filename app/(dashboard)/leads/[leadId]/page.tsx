@@ -9,7 +9,7 @@ import {
   X, ChevronDown, Activity, Clock, UserCheck, FilePlus2,
   MessageSquarePlus, PencilLine, Minus, UsersRound, ArrowRightLeft, BookOpen,
   PhoneOff, Plus, MessageSquare, AlertTriangle, Target, TrendingUp, CircleDollarSign,
-  MessageCircle,
+  MessageCircle, XCircle,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,7 +49,11 @@ import { PaymentPanel } from "@/components/leads/PaymentPanel";
 import { CallsPanel } from "@/components/leads/CallsPanel";
 import { FollowUpPanel } from "@/components/leads/FollowUpPanel";
 import { ClickToCall } from "@/components/leads/ClickToCall";
-import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { LOST_REASONS, LostReasonModal } from "@/components/leads/LostReasonModal";
+
+const LOST_REASON_LABELS: Record<string, string> = Object.fromEntries(
+  LOST_REASONS.map((r) => [r.value, r.label]),
+);
 import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
 import { fmtFull } from "@/lib/currency";
 import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONFIG } from "@/lib/leadConfig";
@@ -729,6 +733,28 @@ export default function LeadDetailPage() {
 
                 {lead.lastFollowupDate && (
                   <InfoRow icon={Calendar} label="Last Follow-up" value={new Date(lead.lastFollowupDate).toLocaleDateString("en-AE", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric" })} />
+                )}
+
+                {/* Lost details — reason + notes captured when the lead was marked lost */}
+                {lead.status === "lost" && (lead.lostReason || lead.lostNotes) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 space-y-1.5"
+                  >
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-red-400">
+                      <XCircle className="h-3.5 w-3.5" /> Lost Details
+                    </p>
+                    {lead.lostReason && (
+                      <p className="text-xs text-foreground">
+                        <span className="text-muted-foreground">Reason: </span>
+                        <span className="font-medium">{LOST_REASON_LABELS[lead.lostReason] ?? lead.lostReason}</span>
+                      </p>
+                    )}
+                    {lead.lostNotes && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap">{lead.lostNotes}</p>
+                    )}
+                  </motion.div>
                 )}
                 {/* Demo badges */}
                 {(lead.demoScheduled != null || lead.demoAttended != null) && (

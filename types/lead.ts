@@ -79,6 +79,8 @@ export interface Lead {
   source?: string;
   campaignId?: string;
   status: LeadStatus;
+  lostReason?: string | null;
+  lostNotes?: string | null;
   course?: Course | string | null;
   assignedTo?: User | string | null;
   assignedAt?: string | null;
