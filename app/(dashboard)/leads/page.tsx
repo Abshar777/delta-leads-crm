@@ -47,7 +47,8 @@ import { INITIAL_RESPONSE_CONFIG, PRIMARY_CONCERN_CONFIG, FOLLOWUP_STRATEGY_CONF
 import { ExactConcernEditor } from "@/components/leads/ExactConcernEditor";
 import { CreateStudentModal } from "@/components/students/CreateStudentModal";
 import { useStudentByLeadId } from "@/hooks/useStudents";
-import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { LOST_REASONS, LostReasonModal } from "@/components/leads/LostReasonModal";
+import { TruncatedCell } from "@/components/leads/TruncatedCell";
 import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -92,6 +93,7 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: "primaryConcern",       label: "Concern",            defaultVisible: true  },
   { id: "exactConcern",         label: "Exact Concern",      defaultVisible: false },
   { id: "followupStrategyType", label: "Strategy",           defaultVisible: true  },
+  { id: "lostNotes",            label: "Lost Notes",         defaultVisible: false },
 ];
 
 const DEFAULT_VISIBLE = new Set(ALL_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.id));
@@ -155,6 +157,7 @@ function LeadsPageContent() {
   const [followupFrom, setFollowupFrom] = useState<string>(() => searchParams.get("followupFrom") ?? "");
   const [followupTo, setFollowupTo] = useState<string>(() => searchParams.get("followupTo") ?? "");
   const [source, setSource] = useState<string>(() => searchParams.get("source") ?? "all");
+  const [lostReason, setLostReason] = useState<string>(() => searchParams.get("lostReason") ?? "all");
   const [sortBy, setSortBy] = useState<string>(() => searchParams.get("sortBy") ?? "createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() => (searchParams.get("sortOrder") as "asc" | "desc") ?? "desc");
   const [showFilters, setShowFilters] = useState(() => {
@@ -268,6 +271,7 @@ function LeadsPageContent() {
       primaryConcern:       { label: "Concern",       cls: "px-4 py-3 text-left hidden lg:table-cell" },
       exactConcern:         { label: "Exact Concern", cls: "px-4 py-3 text-left hidden lg:table-cell" },
       followupStrategyType: { label: "Strategy",      cls: "px-4 py-3 text-left hidden lg:table-cell" },
+      lostNotes:            { label: "Lost Notes",    cls: "px-4 py-3 text-left hidden lg:table-cell" },
     };
     const h = labelMap[colId];
     if (!h) return null;
@@ -464,6 +468,11 @@ function LeadsPageContent() {
           <ExactConcernEditor leadId={lead._id} leadName={lead.name} value={lead.exactConcern} />
         </td>
       );
+      case "lostNotes": return (
+        <td key="lostNotes" className="px-4 py-4 hidden lg:table-cell">
+          <TruncatedCell value={lead.lostNotes} label={`Lost Notes — ${lead.name}`} />
+        </td>
+      );
       case "followupStrategyType": return (
         <td key="followupStrategyType" className="px-4 py-4 hidden lg:table-cell">
           <DropdownMenu>
@@ -602,6 +611,7 @@ function LeadsPageContent() {
     ...(courseId !== "all" ? { course: courseId } : {}),
     ...(teamId !== "all" ? { team: teamId } : {}),
     ...(source !== "all" ? { source } : {}),
+    ...(lostReason !== "all" ? { lostReason } : {}),
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
     ...(demoScheduled !== "all" ? { demoScheduled } : {}),
@@ -610,7 +620,7 @@ function LeadsPageContent() {
     ...(followupTo ? { followupTo } : {}),
     sortBy,
     sortOrder,
-  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, source, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
+  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, source, lostReason, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
 
   const { data, isLoading, isFetching } = useLeads(filters);
   const { data: usersData } = useUsers({ status: "active", limit: "200" });
@@ -1089,6 +1099,29 @@ function LeadsPageContent() {
                       </Select>
                     </div>
 
+                    {/* Lost reason — only a lost lead carries one, so this is disabled
+                        unless the status filter lets lost leads through. Enabled but
+                        always-empty would look broken in exactly the way this filter
+                        used to be. */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Lost Reason</p>
+                      <Select
+                        value={lostReason}
+                        onValueChange={(v) => applyFilter(setLostReason, v)}
+                        disabled={status !== "all" && status !== "lost"}
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder="All Reasons" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="all">All Reasons</SelectItem>
+                          {LOST_REASONS.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="md:block hidden"></div>
                     <div className="space-y-2 ">
                       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -1242,6 +1275,7 @@ function LeadsPageContent() {
                   ...(courseId !== "all" ? { course: courseId } : {}),
                   ...(teamId !== "all" ? { team: teamId } : {}),
                   ...(source !== "all" ? { source } : {}),
+                  ...(lostReason !== "all" ? { lostReason } : {}),
                   ...(dateFrom ? { dateFrom } : {}),
                   ...(dateTo ? { dateTo } : {}),
                 }}

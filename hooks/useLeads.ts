@@ -35,6 +35,14 @@ export const useLeads = (filters?: LeadFilters) => {
       if (filters?.sortBy)     params.sortBy     = filters.sortBy;
       if (filters?.sortOrder)  params.sortOrder  = filters.sortOrder;
       if (filters?.source)     params.source     = filters.source;
+      // These were on LeadFilters but never sent, so the backend could not have
+      // acted on them even once it started reading them.
+      if (filters?.lostReason)    params.lostReason    = filters.lostReason;
+      if (filters?.campaignId)    params.campaignId    = filters.campaignId;
+      if (filters?.demoScheduled) params.demoScheduled = filters.demoScheduled;
+      if (filters?.demoAttended)  params.demoAttended  = filters.demoAttended;
+      if (filters?.followupFrom)  params.followupFrom  = filters.followupFrom;
+      if (filters?.followupTo)    params.followupTo    = filters.followupTo;
       const response = await api.get<ApiResponse<Lead[]>>("/leads", { params });
       return { data: response.data.data ?? [], pagination: response.data.pagination };
     },
