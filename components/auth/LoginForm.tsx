@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Loader2, Zap } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { DeltaMark } from "@/components/brand/DeltaMark";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/authSchema";
 import { useLogin } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export function LoginForm() {
               transition={{ delay: 0.1, duration: 0.3 }}
               className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25"
             >
-              <Zap className="h-7 w-7 text-primary-foreground" />
+              <DeltaMark className="h-7 w-7" color="hsl(var(--primary-foreground))" title="Delta" />
             </motion.div>
             <div>
               <CardTitle className="text-2xl font-bold">Delta</CardTitle>

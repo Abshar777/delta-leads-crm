@@ -3,7 +3,18 @@ import { ImageResponse } from "next/og";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-
+/**
+ * The Delta "d" on the app's own blue.
+ *
+ * The mark is drawn as SVG with the same geometry as the wordmark's `d`: a
+ * full-height stem, a ring for the bowl, and the accent dot on the bowl's left.
+ * An earlier version built it from positioned divs and satori's box model put a
+ * gap between the stem and the bowl — it read as "ol", not a d.
+ *
+ * The dot is a flat teal rather than the wordmark's gradient. At 32 pixels a
+ * gradient is one colour anyway, and `defs` is the part of SVG satori is least
+ * reliable about.
+ */
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -11,24 +22,17 @@ export default function AppleIcon() {
         style={{
           width: 180,
           height: 180,
-          borderRadius: 38,
-          background: "linear-gradient(135deg, #6d28d9, #4f46e5)",
+          borderRadius: 40,
+          background: "#3b82f6",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <svg
-          width="96"
-          height="96"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        <svg width="118" height="118" viewBox="0 0 100 100">
+          <rect x="70" y="6" width="16" height="88" rx="3" fill="#fff" />
+          <circle cx="48" cy="62" r="30" fill="none" stroke="#fff" strokeWidth="16" />
+          <circle cx="16" cy="62" r="15" fill="#45d6bd" />
         </svg>
       </div>
     ),

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DeltaMark } from "@/components/brand/DeltaMark";
 import {
   ClipboardCheck,
   LayoutDashboard,
@@ -11,7 +12,6 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
-  Zap,
   FileText,
   UsersRound,
   BookOpen,
@@ -190,7 +190,7 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <div className="flex h-16 items-center gap-3 border-b border-sidebar-border/10 px-4 shrink-0">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-        <Zap className="h-5 w-5 text-primary-foreground" />
+        <DeltaMark className="h-5 w-5" color="hsl(var(--primary-foreground))" title="Delta" />
       </div>
       <AnimatePresence>
         {!collapsed && (
@@ -309,7 +309,7 @@ function MobileDrawer() {
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-5 w-5 text-primary-foreground" />
+              <DeltaMark className="h-5 w-5" color="hsl(var(--primary-foreground))" title="Delta" />
             </div>
             <div>
               <p className="text-sm font-bold text-sidebar-foreground">Delta</p>

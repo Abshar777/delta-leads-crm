@@ -25,7 +25,9 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        // Inset, because a maskable icon is cropped to whatever shape the OS
+        // uses — a square one loses its corners and, here, the accent dot.
+        src: "/icons/icon-maskable-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
