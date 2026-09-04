@@ -39,6 +39,8 @@ export const useLeads = (filters?: LeadFilters) => {
       // acted on them even once it started reading them.
       if (filters?.lostReason)    params.lostReason    = filters.lostReason;
       if (filters?.campaignId)    params.campaignId    = filters.campaignId;
+      if (filters?.splitFrom)  params.splitFrom  = filters.splitFrom;
+      if (filters?.splitTo)    params.splitTo    = filters.splitTo;
       if (filters?.demoScheduled) params.demoScheduled = filters.demoScheduled;
       if (filters?.demoAttended)  params.demoAttended  = filters.demoAttended;
       if (filters?.followupFrom)  params.followupFrom  = filters.followupFrom;

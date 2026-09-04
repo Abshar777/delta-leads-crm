@@ -155,6 +155,8 @@ function LeadsPageContent() {
   const [demoScheduled, setDemoScheduled] = useState<string>(() => searchParams.get("demoScheduled") ?? "all");
   const [demoAttended, setDemoAttended] = useState<string>(() => searchParams.get("demoAttended") ?? "all");
   const [followupFrom, setFollowupFrom] = useState<string>(() => searchParams.get("followupFrom") ?? "");
+  const [splitFrom, setSplitFrom] = useState<string>(() => searchParams.get("splitFrom") ?? "");
+  const [splitTo, setSplitTo] = useState<string>(() => searchParams.get("splitTo") ?? "");
   const [followupTo, setFollowupTo] = useState<string>(() => searchParams.get("followupTo") ?? "");
   const [source, setSource] = useState<string>(() => searchParams.get("source") ?? "all");
   const [lostReason, setLostReason] = useState<string>(() => searchParams.get("lostReason") ?? "all");
@@ -163,7 +165,7 @@ function LeadsPageContent() {
   const [showFilters, setShowFilters] = useState(() => {
     // Auto-open filters panel if any filter param is present in URL
     const sp = searchParams;
-    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom") || sp.get("source"));
+    return !!(sp.get("status") || sp.get("assignedTo") || sp.get("reporter") || sp.get("course") || sp.get("team") || sp.get("from") || sp.get("to") || sp.get("demoScheduled") || sp.get("demoAttended") || sp.get("followupFrom") || sp.get("splitFrom") || sp.get("source"));
   });
 
   // ── View mode — synced to ?view= URL param ────────────────────────────────────
@@ -515,11 +517,13 @@ function LeadsPageContent() {
     if (demoScheduled !== "all") params.set("demoScheduled", demoScheduled);
     if (demoAttended !== "all") params.set("demoAttended", demoAttended);
     if (followupFrom) params.set("followupFrom", followupFrom);
+    if (splitFrom) params.set("splitFrom", splitFrom);
+    if (splitTo) params.set("splitTo", splitTo);
     if (followupTo) params.set("followupTo", followupTo);
     if (sortBy !== "createdAt") params.set("sortBy", sortBy);
     if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     router.replace(`?${params.toString()}`, { scroll: false });
-  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, source, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
+  }, [viewMode, debouncedSearch, page, limit, status, assignedTo, reporter, courseId, teamId, source, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, splitFrom, splitTo, sortBy, sortOrder]);
 
   // ── Dialog state ─────────────────────────────────────────────────────────────
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -553,7 +557,7 @@ function LeadsPageContent() {
   const { mutate: updateLeadField } = useUpdateLead();
 
   // Clear selection when page/filters change
-  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, source, demoScheduled, demoAttended, followupFrom, followupTo]);
+  useEffect(() => { setSelectedIds(new Set()); }, [page, debouncedSearch, status, assignedTo, reporter, dateFrom, dateTo, courseId, teamId, source, demoScheduled, demoAttended, followupFrom, followupTo, splitFrom, splitTo]);
 
   const toggleId = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -618,9 +622,11 @@ function LeadsPageContent() {
     ...(demoAttended !== "all" ? { demoAttended } : {}),
     ...(followupFrom ? { followupFrom } : {}),
     ...(followupTo ? { followupTo } : {}),
+    ...(splitFrom ? { splitFrom } : {}),
+    ...(splitTo ? { splitTo } : {}),
     sortBy,
     sortOrder,
-  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, source, lostReason, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, sortBy, sortOrder]);
+  }), [page, limit, debouncedSearch, status, assignedTo, reporter, courseId, teamId, source, lostReason, dateFrom, dateTo, demoScheduled, demoAttended, followupFrom, followupTo, splitFrom, splitTo, sortBy, sortOrder]);
 
   const { data, isLoading, isFetching } = useLeads(filters);
   const { data: usersData } = useUsers({ status: "active", limit: "200" });
@@ -672,6 +678,8 @@ function LeadsPageContent() {
     demoAttended !== "all",
     !!followupFrom,
     !!followupTo,
+    !!splitFrom,
+    !!splitTo,
     !!debouncedSearch,
   ].filter(Boolean).length;
 
@@ -687,6 +695,8 @@ function LeadsPageContent() {
     setDateFrom("");
     setDateTo("");
     setDemoScheduled("all");
+    setSplitFrom("");
+    setSplitTo("");
     setDemoAttended("all");
     setFollowupFrom("");
     setFollowupTo("");
@@ -1145,6 +1155,46 @@ function LeadsPageContent() {
                           className="h-9 text-xs px-2 flex-1 [color-scheme:dark]"
                         />
                       </div>
+                    </div>
+                    {/* Split Date (assigned) */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="h-3 w-3" />
+                        Split Date (Assigned)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(() => {
+                          const t = new Date().toISOString().slice(0, 10);
+                          const isActive = splitFrom === t && splitTo === t;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => { if (isActive) { setSplitFrom(""); setSplitTo(""); } else { setSplitFrom(t); setSplitTo(t); } setPage(1); }}
+                              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"}`}
+                            >
+                              Split Today
+                            </button>
+                          );
+                        })()}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="date"
+                          value={splitFrom}
+                          max={splitTo || undefined}
+                          onChange={(e) => { setSplitFrom(e.target.value); setPage(1); }}
+                          className="h-9 text-xs px-2 flex-1 [color-scheme:dark]"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">to</span>
+                        <Input
+                          type="date"
+                          value={splitTo}
+                          min={splitFrom || undefined}
+                          onChange={(e) => { setSplitTo(e.target.value); setPage(1); }}
+                          className="h-9 text-xs px-2 flex-1 [color-scheme:dark]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/70">Shows leads split in this range, even if created earlier.</p>
                     </div>
                     {/* Date Range */}
                     <div className="space-y-2 md:translate-x-20">

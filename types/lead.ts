@@ -130,6 +130,10 @@ export interface LeadFilters {
   demoAttended?: string;
   followupFrom?: string;
   followupTo?: string;
+  /** YYYY-MM-DD — leads SPLIT (assigned) on or after this date */
+  splitFrom?: string;
+  /** YYYY-MM-DD — leads SPLIT (assigned) on or before this date */
+  splitTo?: string;
   search?: string;
   /** YYYY-MM-DD — leads created on or after this date */
   dateFrom?: string;
