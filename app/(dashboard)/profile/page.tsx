@@ -9,7 +9,7 @@ import {
   TrendingUp, Search, Mail, Phone, Shield, Calendar,
   Activity, StickyNote, ExternalLink, PhoneMissed,
   BookMarked, Sparkles, Star, Filter, X as XIcon,
-  LayoutGrid, List,
+  LayoutGrid, List, ChevronDown, MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,21 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "@/hooks/useUsers";
-import { useUserLeads, useUserLeadStats } from "@/hooks/useLeads";
+import { useUserLeads, useUserLeadStats, useUpdateLeadStatus } from "@/hooks/useLeads";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { QuickNoteDialog } from "@/components/leads/QuickNoteDialog";
+import { ExactConcernEditor } from "@/components/leads/ExactConcernEditor";
+import { ClickToCall } from "@/components/leads/ClickToCall";
+import { FollowupDetailsModal } from "@/components/leads/FollowupDetailsModal";
+import { LostReasonModal } from "@/components/leads/LostReasonModal";
+import { CreateStudentModal } from "@/components/students/CreateStudentModal";
+import { useStudentByLeadId } from "@/hooks/useStudents";
+import type { Lead } from "@/types/lead";
 import { RevenueCard } from "@/components/leads/RevenueCard";
 import { formatDate, getInitials } from "@/lib/utils";
 import { ExportPdfDialog } from "@/components/reports/ExportPdfDialog";
@@ -47,7 +61,12 @@ const itemVariants = {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: LeadStatus }) {
-  const cfg = STATUS_CONFIG[status];
+  // Legacy/unknown statuses (old imports) fall back to a neutral badge
+  const cfg = STATUS_CONFIG[status] ?? {
+    label: String(status),
+    color: "border-border text-muted-foreground bg-muted/30",
+    dot: "bg-muted-foreground",
+  };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${cfg.color}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
@@ -82,6 +101,27 @@ export default function ProfilePage() {
   const [dateTo,       setDateTo]       = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+
+  // Status-change modal state — same intercepts as the Leads page
+  const [lostModalLead,     setLostModalLead]     = useState<Lead | null>(null);
+  const [followupModalLead, setFollowupModalLead] = useState<Lead | null>(null);
+  const [studentModalLead,  setStudentModalLead]  = useState<Lead | null>(null);
+  const [pendingStatus,     setPendingStatus]     = useState<{ lead: Lead; status: LeadStatus } | null>(null);
+  const { mutate: updateStatus, isPending: statusSaving } = useUpdateLeadStatus();
+
+  function handleStatusChange(l: Lead, s: LeadStatus) {
+    if (s === l.status) return;
+    if (s === "lost") {
+      setLostModalLead(l);
+    } else if (s === "followup") {
+      setFollowupModalLead(l);
+    } else if (s === "closed") {
+      setPendingStatus({ lead: l, status: s });
+      setStudentModalLead(l);
+    } else {
+      updateStatus({ id: l._id, status: s });
+    }
+  }
 
   function todayISO() { return new Date().toISOString().slice(0, 10); }
   const isTodayActive = dateFrom === todayISO() && dateTo === todayISO();
@@ -384,7 +424,7 @@ export default function ProfilePage() {
           <CardContent className="p-0">
             {viewMode === "kanban" ? (
               <div className="p-4">
-                <KanbanBoard filters={{ assignedTo: userId }} canEdit={false} />
+                <KanbanBoard filters={{ assignedTo: userId }} canEdit={true} />
               </div>
             ) : leadsLoading ? (
               <div className="flex items-center justify-center py-16">
@@ -404,6 +444,7 @@ export default function ProfilePage() {
                       <th className="px-6 py-3 text-left hidden sm:table-cell">Phone</th>
                       <th className="px-6 py-3 text-left">Status</th>
                       <th className="px-6 py-3 text-left hidden md:table-cell">Source</th>
+                      <th className="px-6 py-3 text-left hidden lg:table-cell">Exact Concern</th>
                       <th className="px-6 py-3 text-center hidden lg:table-cell">Notes</th>
                       <th className="px-6 py-3 text-left hidden lg:table-cell">Created</th>
                       <th className="px-6 py-3 text-center">View</th>
@@ -431,24 +472,65 @@ export default function ProfilePage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 hidden sm:table-cell">
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                              {lead.phone ? <><Phone className="h-3 w-3" />{lead.phone}</> : "—"}
-                            </span>
+                            {lead.phone ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm text-muted-foreground">{lead.phone}</span>
+                                <ClickToCall phoneNumber={lead.phone} leadId={lead._id} leadName={lead.name} />
+                                {lead.hasWhatsapp && (
+                                  <a
+                                    href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Open WhatsApp"
+                                    className="text-green-500 hover:text-green-600 transition-colors"
+                                  >
+                                    <MessageCircle className="h-3.5 w-3.5 fill-green-500/20" />
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">—</span>
+                            )}
                           </td>
                           <td className="px-6 py-4">
-                            <StatusBadge status={lead.status} />
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="flex items-center gap-0.5">
+                                  <StatusBadge status={lead.status} />
+                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                {(Object.keys(STATUS_CONFIG) as LeadStatus[]).map((s) => (
+                                  <DropdownMenuItem
+                                    key={s}
+                                    onClick={() => handleStatusChange(lead as unknown as Lead, s)}
+                                    className={lead.status === s ? "font-semibold" : ""}
+                                  >
+                                    <StatusBadge status={s} />
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                           <td className="px-6 py-4 hidden md:table-cell">
                             <span className="text-sm text-muted-foreground capitalize">{lead.source ?? "—"}</span>
                           </td>
+                          <td className="px-6 py-4 hidden lg:table-cell">
+                            <ExactConcernEditor
+                              leadId={lead._id}
+                              leadName={lead.name}
+                              value={lead.exactConcern}
+                            />
+                          </td>
                           <td className="px-6 py-4 hidden lg:table-cell text-center">
-                            {noteCount > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                                <StickyNote className="h-3 w-3" />{noteCount}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground/40">—</span>
-                            )}
+                            <div className="inline-flex items-center gap-1">
+                              <QuickNoteDialog leadId={lead._id} leadName={lead.name} />
+                              {noteCount > 0 && (
+                                <span className="text-xs text-muted-foreground">{noteCount}</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 hidden lg:table-cell">
                             <span className="text-sm text-muted-foreground">{formatDate(lead.createdAt)}</span>
@@ -514,6 +596,74 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* ── Status-change popups — same as the Leads page ── */}
+      <LostReasonModal
+        open={!!lostModalLead}
+        leadName={lostModalLead?.name}
+        loading={statusSaving}
+        onCancel={() => setLostModalLead(null)}
+        onConfirm={(reason, notes) => {
+          if (!lostModalLead) return;
+          updateStatus(
+            { id: lostModalLead._id, status: "lost", lostReason: reason, lostNotes: notes || undefined },
+            { onSuccess: () => setLostModalLead(null) },
+          );
+        }}
+      />
+
+      <FollowupDetailsModal
+        open={!!followupModalLead}
+        leadName={followupModalLead?.name}
+        loading={statusSaving}
+        onCancel={() => setFollowupModalLead(null)}
+        onConfirm={(d) => {
+          if (!followupModalLead) return;
+          updateStatus(
+            { id: followupModalLead._id, status: "followup", ...d },
+            { onSuccess: () => setFollowupModalLead(null) },
+          );
+        }}
+      />
+
+      {studentModalLead && (
+        <ProfileStudentModalWrapper
+          lead={studentModalLead}
+          onClose={() => { setStudentModalLead(null); setPendingStatus(null); }}
+          onSettled={() => {
+            if (pendingStatus) updateStatus({ id: pendingStatus.lead._id, status: pendingStatus.status });
+            setStudentModalLead(null);
+            setPendingStatus(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// Separate wrapper so useStudentByLeadId only fires when the modal is open
+function ProfileStudentModalWrapper({ lead, onClose, onSettled }: {
+  lead: Lead;
+  onClose: () => void;
+  onSettled: () => void;
+}) {
+  const { data: existingStudent, isLoading } = useStudentByLeadId(lead._id);
+
+  if (isLoading) return null;
+
+  // Already a student — just apply the status update silently
+  if (existingStudent) {
+    onSettled();
+    return null;
+  }
+
+  return (
+    <CreateStudentModal
+      open
+      lead={lead}
+      onClose={onClose}
+      onSkip={onSettled}
+      onCreated={onSettled}
+    />
   );
 }
